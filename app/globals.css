@@ -158,3 +158,22 @@ button { cursor: pointer; }
   .map-search { width: calc(100% - 32px); }
 }
 
+/* ML risk predictor form */
+.predict-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.predict-field { display: flex; flex-direction: column; gap: 6px; }
+.predict-field.full { grid-column: 1 / -1; }
+.predict-field span { font-size: 10px; color: var(--slate); text-transform: uppercase; letter-spacing: .05em; }
+.predict-field input,
+.predict-field select {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 11px;
+  font-size: 13px;
+  color: var(--ink);
+  font-family: inherit;
+}
+.predict-field input:focus,
+.predict-field select:focus { outline: 2px solid #8fb7bf; outline-offset: 0; }
+.predict-form .secondary-button { grid-column: 1 / -1; justify-content: center; margin-top: 4px; }
+

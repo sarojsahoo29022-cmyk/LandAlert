@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Download, ChevronDown, CloudRain } from 'lucide-react'
 import {
   historicalEvents,
@@ -12,8 +13,26 @@ import { RiskRainfallChart } from '../risk-rainfall-chart'
 import { DataTable } from '../data-table'
 import { StatusBadge } from '../status-badge'
 import { HazardCascadeTimeline } from '../hazard-cascade-timeline'
+import { RiskPredictor } from '../risk-predictor'
+import { fetchModelMetrics, type ModelMetrics } from '@/lib/ml-api'
 
 export function AnalyticsScreen() {
+  const [liveMetrics, setLiveMetrics] = useState<ModelMetrics | null>(null)
+
+  useEffect(() => {
+    fetchModelMetrics().then(setLiveMetrics)
+  }, [])
+
+  const metricTiles = liveMetrics
+    ? [
+        { label: 'Accuracy', value: liveMetrics.accuracy.toFixed(3), note: 'test set' },
+        { label: 'Precision', value: liveMetrics.precision.toFixed(3), note: 'test set' },
+        { label: 'Recall', value: liveMetrics.recall.toFixed(3), note: 'test set' },
+        { label: 'F1 Score', value: liveMetrics.f1.toFixed(3), note: 'test set' },
+        { label: 'ROC-AUC', value: liveMetrics.roc_auc.toFixed(3), note: 'test set' },
+      ]
+    : modelMetrics
+
   return (
     <div className="screen-content">
       <div className="screen-header">
@@ -121,16 +140,25 @@ export function AnalyticsScreen() {
 
         <ChartCard
           kicker="MODEL PERFORMANCE"
-          title="Evaluation (reserved)"
+          title="Landslide model evaluation"
           className="model-panel"
-          legend={<span className="demo-tag">PLACEHOLDER</span>}
+          legend={
+            liveMetrics ? (
+              <span className="demo-tag" style={{ color: '#27966a', borderColor: '#27966a' }}>
+                LIVE
+              </span>
+            ) : (
+              <span className="demo-tag">PLACEHOLDER</span>
+            )
+          }
         >
           <p className="explanation">
-            Reserved for future machine-learning evaluation. Values below are placeholders and must not
-            be interpreted as scientific accuracy.
+            {liveMetrics
+              ? 'Live metrics from the trained GeoShield classifier (test set). Replace the demo dataset with local North-East India data to improve relevance.'
+              : 'Showing placeholder values. Start the FastAPI service (ml/api.py) to load live model metrics.'}
           </p>
           <div className="model-stats">
-            {modelMetrics.map((m) => (
+            {metricTiles.map((m) => (
               <div key={m.label}>
                 <span>{m.label}</span>
                 <strong>{m.value}</strong>
@@ -139,6 +167,8 @@ export function AnalyticsScreen() {
             ))}
           </div>
         </ChartCard>
+
+        <RiskPredictor />
 
         <HazardCascadeTimeline />
       </div>

@@ -1,4 +1,5 @@
 import joblib
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -6,10 +7,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-MODEL_PATH = Path(__file__).parent / "model.joblib"
-SNAPSHOT_PATH = Path(__file__).parent / "predictions_snapshot.json"
+MODEL_PATH = Path(__file__).parent / "model_ne.joblib"
+SNAPSHOT_PATH = Path(__file__).parent / "ne_snapshot.json"
 
-app = FastAPI(title="GeoShield Landslide Model API", version="0.1.0")
+app = FastAPI(title="GeoShield Landslide Model API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,13 +32,11 @@ def load_model():
 
 
 class Features(BaseModel):
-    T2M: float
-    precipitation: float
-    rainfall_3day_sum: float
-    rainfall_7day_sum: float
-    rainfall_30day_sum: float
-    temp_7day_avg: float
-    district: str
+    latitude: float = 0.0
+    longitude: float = 0.0
+    month: int = Field(ge=1, le=12)
+    year: int = 2024
+    state: str
 
 
 def risk_level(p: float) -> str:
@@ -50,7 +49,11 @@ def risk_level(p: float) -> str:
 
 @app.get("/")
 def root():
-    return {"service": "GeoShield Landslide Model API", "status": "ok"}
+    return {
+        "service": "GeoShield Landslide Model API",
+        "status": "ok",
+        "scope": _META.get("scope") if _META else None,
+    }
 
 
 @app.get("/health")
@@ -62,21 +65,19 @@ def health():
 def predict(features: Features):
     if _MODEL is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    row = {
-        "T2M": [features.T2M],
-        "precipitation": [features.precipitation],
-        "rainfall_3day_sum": [features.rainfall_3day_sum],
-        "rainfall_7day_sum": [features.rainfall_7day_sum],
-        "rainfall_30day_sum": [features.rainfall_30day_sum],
-        "temp_7day_avg": [features.temp_7day_avg],
-        "district": [str(features.district)],
-    }
     import pandas as pd
 
+    row = {
+        "latitude": [features.latitude],
+        "longitude": [features.longitude],
+        "month": [features.month],
+        "year": [features.year],
+        "state": [str(features.state)],
+    }
     X = pd.DataFrame(row)
     proba = float(_MODEL.predict_proba(X)[0, 1])
     return {
-        "district": features.district,
+        "state": features.state,
         "landslide_probability": round(proba, 4),
         "risk_level": risk_level(proba),
         "prediction": int(proba >= 0.5),
@@ -87,8 +88,6 @@ def predict(features: Features):
 def snapshot():
     if not SNAPSHOT_PATH.exists():
         raise HTTPException(status_code=404, detail="Snapshot not generated")
-    import json
-
     return json.loads(SNAPSHOT_PATH.read_text())
 
 
@@ -96,10 +95,8 @@ def snapshot():
 def districts():
     if not SNAPSHOT_PATH.exists():
         return {"districts": []}
-    import json
-
     data = json.loads(SNAPSHOT_PATH.read_text())
-    return {"districts": [d["district"] for d in data["districts"]]}
+    return {"districts": [d["state"] for d in data["states"]]}
 
 
 if __name__ == "__main__":
