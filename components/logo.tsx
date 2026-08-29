@@ -8,7 +8,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div>
-          <div className="logo-name">LandAlert</div>
+          <div className="logo-name">GeoShield</div>
           <div className="logo-subtitle">AI LANDSLIDE INTELLIGENCE</div>
         </div>
       )}

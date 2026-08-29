@@ -8,7 +8,7 @@ export function Footer({ setActive }: { setActive: (label: string) => void }) {
     <footer className="site-footer">
       <div>
         <Logo />
-        <p>AI-Based Landslide Early Warning &amp; Risk Monitoring System</p>
+        <p>GeoShield — AI-Based Landslide Early Warning &amp; Risk Monitoring System</p>
       </div>
       <div className="footer-links">
         {links.map((l) => (

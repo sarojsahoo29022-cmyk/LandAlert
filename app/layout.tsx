@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'LandAlert · AI Landslide Intelligence',
+  title: 'GeoShield · AI Landslide Intelligence',
   description: 'AI-assisted landslide risk monitoring and early warning for vulnerable regions of North-Eastern India.',
   generator: 'v0.app',
   icons: {

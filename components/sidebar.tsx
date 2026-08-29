@@ -61,7 +61,7 @@ export function Sidebar({
           </div>
         </div>
         <div className="sidebar-foot">
-          <span>LandAlert v0.1 · Demo</span>
+          <span>GeoShield v0.1 · Demo</span>
           <button aria-label="Settings">
             <Settings2 size={16} />
           </button>
