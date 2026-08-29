@@ -13,3 +13,15 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# ML datasets (large external CSVs — keep out of git)
+datasets/
+
+# Python ML service
+ml/.venv/
+ml/__pycache__/
+ml/api.log
+ml/api.err
+
+# Conversation memory (local notes, not project source)
+CONVERSATION_MEMORY.md

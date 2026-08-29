@@ -1,0 +1,629 @@
+{
+  "generated_from": "latest record per district",
+  "districts": [
+    {
+      "district": "gorkha",
+      "date": "2019-09-11",
+      "risk": 0.9471,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kailali",
+      "date": "2019-12-12",
+      "risk": 0.9465,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "taplejung",
+      "date": "2019-09-14",
+      "risk": 0.9177,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "panchthar",
+      "date": "2019-09-01",
+      "risk": 0.9119,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "ramechhap",
+      "date": "2019-07-12",
+      "risk": 0.9112,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "khotang",
+      "date": "2019-09-29",
+      "risk": 0.8797,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rolpa",
+      "date": "2019-09-12",
+      "risk": 0.8658,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dhankuta",
+      "date": "2019-09-29",
+      "risk": 0.8604,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "baglung",
+      "date": "2019-08-17",
+      "risk": 0.8582,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "syangja",
+      "date": "2019-09-16",
+      "risk": 0.857,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dhading",
+      "date": "2019-07-26",
+      "risk": 0.8427,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "solukhumbu",
+      "date": "2019-09-27",
+      "risk": 0.8417,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "nuwakot",
+      "date": "2019-08-31",
+      "risk": 0.8371,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kavrepalanchok",
+      "date": "2019-09-19",
+      "risk": 0.8219,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dailekh",
+      "date": "2019-09-30",
+      "risk": 0.8191,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "sankhuwasabha",
+      "date": "2019-09-22",
+      "risk": 0.8165,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "lalitpur",
+      "date": "2019-09-04",
+      "risk": 0.8039,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "darchula",
+      "date": "2019-09-04",
+      "risk": 0.8028,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "terhathum",
+      "date": "2019-07-23",
+      "risk": 0.7968,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dolakha",
+      "date": "2019-08-23",
+      "risk": 0.7815,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "gulmi",
+      "date": "2019-09-18",
+      "risk": 0.7672,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "parbat",
+      "date": "2019-09-22",
+      "risk": 0.766,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "myagdi",
+      "date": "2019-09-26",
+      "risk": 0.7598,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "palpa",
+      "date": "2019-09-17",
+      "risk": 0.7585,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "achham",
+      "date": "2019-07-24",
+      "risk": 0.7577,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "humla",
+      "date": "2019-07-24",
+      "risk": 0.7562,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dolpa",
+      "date": "2019-07-12",
+      "risk": 0.7514,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "lamjung",
+      "date": "2019-09-27",
+      "risk": 0.731,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "ilam",
+      "date": "2019-07-31",
+      "risk": 0.7261,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "manang",
+      "date": "2019-07-14",
+      "risk": 0.7244,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "jajarkot",
+      "date": "2019-09-10",
+      "risk": 0.716,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bajura",
+      "date": "2019-08-15",
+      "risk": 0.7082,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rasuwa",
+      "date": "2019-08-22",
+      "risk": 0.7055,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "mustang",
+      "date": "2019-09-09",
+      "risk": 0.6998,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "arghakhanchi",
+      "date": "2019-07-08",
+      "risk": 0.6938,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "sindhupalchok",
+      "date": "2019-09-17",
+      "risk": 0.6743,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "pyuthan",
+      "date": "2019-10-02",
+      "risk": 0.674,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rukum east",
+      "date": "2019-09-06",
+      "risk": 0.6706,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bhojpur",
+      "date": "2019-09-27",
+      "risk": 0.6668,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rukum west",
+      "date": "2019-09-20",
+      "risk": 0.6605,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kalikot",
+      "date": "2019-07-30",
+      "risk": 0.6554,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "makwanpur",
+      "date": "2019-07-23",
+      "risk": 0.6527,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "surkhet",
+      "date": "2019-12-12",
+      "risk": 0.6147,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "mugu",
+      "date": "2019-08-16",
+      "risk": 0.6112,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "okhaldhunga",
+      "date": "2019-09-20",
+      "risk": 0.608,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "salyan",
+      "date": "2018-09-07",
+      "risk": 0.6011,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "tanahu",
+      "date": "2019-07-13",
+      "risk": 0.5969,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "chitwan",
+      "date": "2019-07-02",
+      "risk": 0.5837,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "doti",
+      "date": "2019-09-12",
+      "risk": 0.5827,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kaski",
+      "date": "2019-09-16",
+      "risk": 0.5695,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dadeldhura",
+      "date": "2018-09-11",
+      "risk": 0.5439,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "baitadi",
+      "date": "2019-06-12",
+      "risk": 0.5277,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bajhang",
+      "date": "2019-09-29",
+      "risk": 0.5115,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bhaktapur",
+      "date": "2019-08-16",
+      "risk": 0.5037,
+      "risk_level": "High",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "udayapur",
+      "date": "2019-09-17",
+      "risk": 0.4704,
+      "risk_level": "Moderate",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kathmandu",
+      "date": "2019-08-31",
+      "risk": 0.4497,
+      "risk_level": "Moderate",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "sindhuli",
+      "date": "2019-07-21",
+      "risk": 0.3736,
+      "risk_level": "Moderate",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "nawalparasi east",
+      "date": "2019-08-31",
+      "risk": 0.2636,
+      "risk_level": "Moderate",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "jumla",
+      "date": "2018-07-25",
+      "risk": 0.2116,
+      "risk_level": "Moderate",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kapilbastu",
+      "date": "2019-07-13",
+      "risk": 0.1131,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "kanchanpur",
+      "date": "2019-07-15",
+      "risk": 0.1053,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dang",
+      "date": "2019-07-13",
+      "risk": 0.0869,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "parsa",
+      "date": "2019-07-15",
+      "risk": 0.0669,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "sunsari",
+      "date": "2019-09-28",
+      "risk": 0.0534,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rupandehi",
+      "date": "2019-07-23",
+      "risk": 0.037,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "nawalparasi west",
+      "date": "2018-07-01",
+      "risk": 0.0355,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "banke",
+      "date": "2019-07-07",
+      "risk": 0.0287,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "sarlahi",
+      "date": "2019-07-14",
+      "risk": 0.0232,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bardiya",
+      "date": "2019-07-08",
+      "risk": 0.0143,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "morang",
+      "date": "2019-07-25",
+      "risk": 0.0123,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "jhapa",
+      "date": "2019-08-21",
+      "risk": 0.0123,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "siraha",
+      "date": "2019-07-16",
+      "risk": 0.0067,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "dhanusa",
+      "date": "2019-07-14",
+      "risk": 0.0042,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "bara",
+      "date": "2019-07-12",
+      "risk": 0.0035,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "mahottari",
+      "date": "2019-07-14",
+      "risk": 0.0032,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "saptari",
+      "date": "2019-07-24",
+      "risk": 0.0026,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "rautahat",
+      "date": "2019-07-15",
+      "risk": 0.002,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    },
+    {
+      "district": "No Event",
+      "date": "2019-12-31",
+      "risk": 0.0,
+      "risk_level": "Low",
+      "precipitation": 0.0,
+      "rainfall_7day_sum": 0.0
+    }
+  ]
+}
