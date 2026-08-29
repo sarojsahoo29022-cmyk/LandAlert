@@ -3,7 +3,7 @@ import joblib
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
@@ -15,18 +15,18 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
-DATA_PATH = "datasets/ne_india_landslide.csv"
+DATA_PATH = "datasets/ne_india_landslide_enriched.csv"
 MODEL_PATH = "ml/model_ne.joblib"
 SNAPSHOT_PATH = "ml/ne_snapshot.json"
 
-NUMERIC = ["month"]
+NUMERIC = ["latitude", "longitude", "month", "temp_2m", "is_monsoon"]
 CATEGORICAL = ["state"]
 TARGET = "landslide_occurred"
 
 
 def main():
     df = pd.read_csv(DATA_PATH)
-    df = df.dropna(subset=NUMERIC + [TARGET]).copy()
+    df = df.dropna(subset=NUMERIC + CATEGORICAL + [TARGET]).copy()
     df[TARGET] = df[TARGET].astype(int)
 
     X = df[NUMERIC + CATEGORICAL]
@@ -43,7 +43,11 @@ def main():
         ]
     )
     clf = HistGradientBoostingClassifier(
-        learning_rate=0.1, max_iter=300, l2_regularization=1.0, random_state=42
+        learning_rate=0.05,
+        max_iter=400,
+        max_depth=5,
+        l2_regularization=0.5,
+        random_state=42,
     )
     pipe = Pipeline([("pre", pre), ("clf", clf)])
     pipe.fit(X_train, y_train)
@@ -59,7 +63,7 @@ def main():
         "confusion_matrix": confusion_matrix(y_test, pred).tolist(),
         "positive_rate_train": float(y_train.mean()),
     }
-    print("NE model metrics:")
+    print("Enriched NE Model metrics:")
     for k, v in metrics.items():
         print(f"  {k}: {v}")
 
@@ -70,14 +74,15 @@ def main():
             "categorical_features": CATEGORICAL,
             "target": TARGET,
             "metrics": metrics,
-            "scope": "North-East India (susceptibility: location + season; no rainfall yet)",
+            "scope": "North-East India Enriched (NASA POWER MERRA-2 Temp + Seasonality + Geospatial)",
         },
         MODEL_PATH,
     )
     print(f"Saved -> {MODEL_PATH}")
 
-    # Per-state average risk across months for the dashboard snapshot.
+    # Generate per-state risk rankings for snapshot
     states = sorted(df["state"].unique())
+    monthly_temp_map = {1: 13.33, 2: 16.0, 3: 18.89, 4: 22.05, 5: 23.35, 6: 24.68, 7: 24.59, 8: 24.5, 9: 23.8, 10: 21.5, 11: 17.8, 12: 14.2}
     snap = []
     for st in states:
         sub = df[df["state"] == st]
@@ -85,22 +90,21 @@ def main():
         lon = sub["longitude"].mean()
         monthly = []
         for m in range(1, 13):
-            monthly.append(
-                float(
-                    pipe.predict_proba(
-                        pd.DataFrame(
-                            [{"latitude": lat, "longitude": lon, "month": m, "year": 2024, "state": st}]
-                        )
-                    )[0, 1]
-                )
+            t2m = monthly_temp_map[m]
+            is_mon = 1 if 5 <= m <= 9 else 0
+            test_row = pd.DataFrame(
+                [{"latitude": lat, "longitude": lon, "month": m, "temp_2m": t2m, "is_monsoon": is_mon, "state": st}]
             )
+            monthly.append(float(pipe.predict_proba(test_row)[0, 1]))
+        
         risk = sum(monthly) / len(monthly)
+        peak_m = int(max(range(12), key=lambda i: monthly[i])) + 1
         snap.append(
             {
                 "state": st,
                 "risk": round(risk, 4),
                 "risk_level": "High" if risk >= 0.5 else ("Moderate" if risk >= 0.2 else "Low"),
-                "peak_month": int(max(range(12), key=lambda i: monthly[i])) + 1,
+                "peak_month": peak_m,
                 "events": int((sub[TARGET] == 1).sum()),
             }
         )

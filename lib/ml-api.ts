@@ -11,6 +11,7 @@ export interface PredictFeatures {
   longitude?: number
   month: number
   year: number
+  temp_2m?: number
   state: string
 }
 
