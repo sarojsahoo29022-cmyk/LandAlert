@@ -25,3 +25,11 @@ ml/api.err
 
 # Conversation memory (local notes, not project source)
 CONVERSATION_MEMORY.md
+
+# Python cache
+__pycache__/
+
+# ML test/debug scripts
+ml/test_model.py
+ml/test_api_integration.py
+ml/inspect_model.py

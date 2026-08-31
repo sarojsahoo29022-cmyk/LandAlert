@@ -1,0 +1,46 @@
+{
+  "feature_names": [
+    "latitude",
+    "longitude",
+    "month",
+    "temp_2m",
+    "is_monsoon",
+    "rainfall_mm"
+  ],
+  "state_mapping": {
+    "Arunachal Pradesh": 0,
+    "Assam": 1,
+    "Manipur": 2,
+    "Meghalaya": 3,
+    "Mizoram": 4,
+    "Nagaland": 5,
+    "Other": 6,
+    "Sikkim": 7,
+    "Tripura": 8,
+    "West Bengal": 9
+  },
+  "target_names": [
+    "No Landslide",
+    "Landslide"
+  ],
+  "metrics": {
+    "accuracy": 0.7803,
+    "precision": 0.5714,
+    "recall": 0.4944,
+    "f1": 0.5301,
+    "roc_auc": 0.8179,
+    "confusion_matrix": [
+      [
+        233,
+        33
+      ],
+      [
+        45,
+        44
+      ]
+    ],
+    "positive_rate_train": 0.2498
+  },
+  "feature_importances": {},
+  "scope": "North-East India with Rainfall (NASA POWER + IMD)"
+}

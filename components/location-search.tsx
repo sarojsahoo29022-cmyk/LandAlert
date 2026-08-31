@@ -7,7 +7,7 @@ export function LocationSearch({
   onAnalyze,
   loading = false,
 }: {
-  onAnalyze: () => void
+  onAnalyze: (searchTerm?: string) => void
   loading?: boolean
 }) {
   const [query, setQuery] = useState('')
@@ -25,14 +25,14 @@ export function LocationSearch({
       </div>
       <button
         className="primary-button"
-        onClick={onAnalyze}
+        onClick={() => onAnalyze(query || undefined)}
         disabled={loading}
         type="button"
       >
         {loading ? (
           <>
             <span className="spinner" aria-hidden />
-            Analyzing…
+            Analyzing...
           </>
         ) : (
           <>

@@ -1,0 +1,75 @@
+{
+  "scope": "North-East India (with Rainfall)",
+  "states": [
+    {
+      "state": "Tripura",
+      "risk": 0.2207,
+      "risk_level": "Moderate",
+      "peak_month": 8,
+      "events": 2
+    },
+    {
+      "state": "Meghalaya",
+      "risk": 0.1918,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 11
+    },
+    {
+      "state": "Mizoram",
+      "risk": 0.1876,
+      "risk_level": "Low",
+      "peak_month": 9,
+      "events": 17
+    },
+    {
+      "state": "West Bengal",
+      "risk": 0.1802,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 33
+    },
+    {
+      "state": "Other",
+      "risk": 0.1734,
+      "risk_level": "Low",
+      "peak_month": 9,
+      "events": 179
+    },
+    {
+      "state": "Sikkim",
+      "risk": 0.1427,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 35
+    },
+    {
+      "state": "Manipur",
+      "risk": 0.1392,
+      "risk_level": "Low",
+      "peak_month": 7,
+      "events": 41
+    },
+    {
+      "state": "Assam",
+      "risk": 0.1208,
+      "risk_level": "Low",
+      "peak_month": 5,
+      "events": 40
+    },
+    {
+      "state": "Arunachal Pradesh",
+      "risk": 0.1118,
+      "risk_level": "Low",
+      "peak_month": 4,
+      "events": 34
+    },
+    {
+      "state": "Nagaland",
+      "risk": 0.0752,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 51
+    }
+  ]
+}

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertTriangle, Bell, Filter as FilterIcon } from 'lucide-react'
-import { alerts } from '@/lib/mock-data'
+import { alerts as mockAlerts } from '@/lib/mock-data'
 import { StatCard } from '../stat-card'
 import { AlertCard } from '../alert-card'
 import { StatusBadge } from '../status-badge'
 import { FilterControls } from '../filter-controls'
+import { fetchAlerts, fetchSnapshot, toRiskTone, type AlertItem, type SnapshotState } from '@/lib/ml-api'
 import type { Alert, AlertStatus } from '@/lib/types'
 
 const statusOptions = ['All', 'Active', 'Monitoring', 'Resolved']
@@ -16,14 +17,44 @@ export function AlertsScreen() {
   const [status, setStatus] = useState('All')
   const [severity, setSeverity] = useState('All')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [liveAlerts, setLiveAlerts] = useState<AlertItem[]>([])
+  const [snapshotData, setSnapshotData] = useState<SnapshotState[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = alerts.filter((a) => {
+  useEffect(() => {
+    async function load() {
+      const [alertsData, snapshotRes] = await Promise.all([fetchAlerts(), fetchSnapshot()])
+      if (alertsData) setLiveAlerts(alertsData)
+      if (snapshotRes) setSnapshotData(snapshotRes)
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  const allAlerts: Alert[] = liveAlerts.length > 0
+    ? liveAlerts.map((a) => ({
+        id: a.id,
+        level: a.level as any,
+        label: a.label,
+        type: a.type,
+        location: a.location,
+        time: a.time,
+        text: a.text,
+        status: a.status as any,
+      }))
+    : mockAlerts
+
+  const filtered = allAlerts.filter((a) => {
     const statusOk = status === 'All' || a.status === (status.toLowerCase() as AlertStatus)
     const severityOk = severity === 'All' || a.level === severity.toLowerCase().replace(' ', '-')
     return statusOk && severityOk
   })
 
-  const selected: Alert | undefined = alerts.find((a) => a.id === selectedId)
+  const selected: Alert | undefined = allAlerts.find((a) => a.id === selectedId)
+
+  const activeCount = allAlerts.filter((a) => a.status === 'active').length
+  const monitoringCount = allAlerts.filter((a) => a.status === 'monitoring').length
+  const highRiskStates = snapshotData.filter((s) => toRiskTone(s.risk_level) === 'high' || toRiskTone(s.risk_level) === 'very-high').length
 
   return (
     <div className="screen-content">
@@ -31,7 +62,7 @@ export function AlertsScreen() {
         <div>
           <span className="eyebrow">ALERT MANAGEMENT</span>
           <h1>Alerts &amp; warnings</h1>
-          <p>Review demonstration alerts and monitor changing conditions.</p>
+          <p>Review ML-generated alerts and monitor changing conditions.</p>
         </div>
         <button className="secondary-button" type="button">
           <FilterIcon size={16} />
@@ -40,10 +71,10 @@ export function AlertsScreen() {
       </div>
 
       <div className="alert-summary">
-        <StatCard label="Active alerts" value="2" hint="+1 today" tone="high" />
-        <StatCard label="High-risk locations" value="9" hint="Across region" />
-        <StatCard label="Alerts today" value="6" hint="2 active" />
-        <StatCard label="Resolved alerts" value="14" hint="Last 30 days" />
+        <StatCard label="Active alerts" value={String(activeCount)} hint="+1 today" tone="high" />
+        <StatCard label="High-risk locations" value={String(highRiskStates)} hint="Across region" />
+        <StatCard label="Alerts today" value={String(allAlerts.length)} hint={`${monitoringCount} monitoring`} />
+        <StatCard label="States monitored" value={String(snapshotData.length)} hint="NER coverage" />
       </div>
 
       <FilterControls

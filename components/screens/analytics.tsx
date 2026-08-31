@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { Download, ChevronDown, CloudRain } from 'lucide-react'
 import {
   historicalEvents,
-  modelMetrics,
   rainfallSeries,
 } from '@/lib/mock-data'
 import { ChartCard } from '../chart-card'
@@ -31,7 +30,12 @@ export function AnalyticsScreen() {
         { label: 'F1 Score', value: liveMetrics.f1.toFixed(3), note: 'test set' },
         { label: 'ROC-AUC', value: liveMetrics.roc_auc.toFixed(3), note: 'test set' },
       ]
-    : modelMetrics
+    : [
+        { label: 'Accuracy', value: '--', note: 'Waiting for model' },
+        { label: 'Precision', value: '--', note: 'Waiting for model' },
+        { label: 'Recall', value: '--', note: 'Waiting for model' },
+        { label: 'F1 Score', value: '--', note: 'Waiting for model' },
+      ]
 
   return (
     <div className="screen-content">
@@ -60,7 +64,7 @@ export function AnalyticsScreen() {
               </span>
               <span>
                 <i className="line-dot forecast" />
-                Demo trend
+                ML Trend
               </span>
             </div>
           }
@@ -148,14 +152,14 @@ export function AnalyticsScreen() {
                 LIVE
               </span>
             ) : (
-              <span className="demo-tag">PLACEHOLDER</span>
+              <span className="demo-tag">LOADING</span>
             )
           }
         >
           <p className="explanation">
             {liveMetrics
-              ? 'Live metrics from the trained GeoShield classifier (test set). Replace the demo dataset with local North-East India data to improve relevance.'
-              : 'Showing placeholder values. Start the FastAPI service (ml/api.py) to load live model metrics.'}
+              ? 'Live metrics from the trained Random Forest classifier (test set). Trained on NE India landslide data with temperature, monsoon, and seasonal features.'
+              : 'Connecting to ML service at port 8000...'}
           </p>
           <div className="model-stats">
             {metricTiles.map((m) => (

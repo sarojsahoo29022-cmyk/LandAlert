@@ -1,10 +1,10 @@
-// Client-side bridge to the GeoShield FastAPI ML service (ml/api.py).
+// Client-side bridge to the GeoShield FastAPI ML service (ml_api.py).
 // All calls fail soft: if the service is not running, callers fall back to mock UI data.
 
 export const ML_API_URL =
   process.env.NEXT_PUBLIC_ML_API_URL ?? 'http://127.0.0.1:8000'
 
-export type RiskLevelRaw = 'Low' | 'Moderate' | 'High'
+export type RiskLevelRaw = 'Low' | 'Moderate' | 'High' | 'Very High'
 
 export interface PredictFeatures {
   latitude?: number
@@ -18,8 +18,10 @@ export interface PredictFeatures {
 export interface PredictResult {
   district: string
   landslide_probability: number
-  risk_level: RiskLevelRaw
+  risk_level: string
   prediction: number
+  factors: Record<string, string>
+  explanation: string
 }
 
 export interface ModelMetrics {
@@ -30,6 +32,24 @@ export interface ModelMetrics {
   roc_auc: number
   confusion_matrix: number[][]
   positive_rate_train: number
+}
+
+export interface SnapshotState {
+  state: string
+  risk_level: string
+  probability: number
+  locations: number
+}
+
+export interface AlertItem {
+  id: string
+  level: string
+  label: string
+  type: string
+  location: string
+  time: string
+  text: string
+  status: string
 }
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T | null> {
@@ -46,7 +66,7 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T | null> {
 }
 
 export async function fetchModelMetrics(): Promise<ModelMetrics | null> {
-  const data = await getJson<{ metrics: ModelMetrics }>('/health')
+  const data = await getJson<{ status: string; metrics: ModelMetrics }>('/health')
   return data?.metrics ?? null
 }
 
@@ -64,9 +84,51 @@ export async function predictRisk(
   })
 }
 
-// Map API risk level ("High") to UI tone ("high") for StatusBadge.
-export function toRiskTone(level: RiskLevelRaw): 'low' | 'moderate' | 'high' {
-  if (level === 'High') return 'high'
-  if (level === 'Moderate') return 'moderate'
+export async function fetchSnapshot(): Promise<SnapshotState[] | null> {
+  const data = await getJson<{ states: SnapshotState[] }>('/snapshot')
+  return data?.states ?? null
+}
+
+export async function fetchAlerts(): Promise<AlertItem[] | null> {
+  const data = await getJson<{ alerts: AlertItem[] }>('/alerts')
+  return data?.alerts ?? null
+}
+
+export async function fetchRiskSummary(): Promise<{
+  low: number
+  moderate: number
+  high: number
+  'very-high': number
+} | null> {
+  const data = await getJson<{ summary: Record<string, number> }>('/risk-summary')
+  return data?.summary ?? null
+}
+
+export async function fetchHistory(stateName: string) {
+  return getJson<{
+    state: string
+    total_records: number
+    landslide_events: number
+    prevalence: number
+    events: {
+      year: number
+      month: number
+      temp_2m: number
+      is_monsoon: boolean
+      latitude: number
+      longitude: number
+    }[]
+  }>(`/history/${encodeURIComponent(stateName)}`)
+}
+
+export function toRiskTone(level: string): 'low' | 'moderate' | 'high' | 'very-high' {
+  const lower = level.toLowerCase()
+  if (lower.includes('very')) return 'very-high'
+  if (lower === 'high') return 'high'
+  if (lower === 'moderate') return 'moderate'
   return 'low'
+}
+
+export function probabilityToScore(prob: number): number {
+  return Math.round(prob * 100)
 }
