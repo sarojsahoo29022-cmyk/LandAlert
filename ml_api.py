@@ -180,7 +180,11 @@ async def health():
 
 @app.get("/districts")
 async def districts():
-    return {"districts": list(STATE_COORDS.keys())}
+    district_list = [
+        {"name": name, "state": info["state"], "lat": info["lat"], "lon": info["lon"]}
+        for name, info in STATE_COORDS.items()
+    ]
+    return {"districts": district_list}
 
 
 @app.post("/predict")
@@ -219,7 +223,7 @@ async def predict(req: PredictRequest):
     }
 
     explanation = (
-        f"Model predicts {risk_level} risk ({prob*100:.0f}%) for {state} in {datetime(2026, month, 1).strftime('%B')}. "
+        f"Model predicts {risk_level} risk ({prob*100:.0f}%) for {state} in {datetime(year, month, 1).strftime('%B %Y')}. "
         f"Rainfall: {rainfall:.0f} mm ({'heavy' if rainfall > 300 else 'moderate' if rainfall > 100 else 'low'}). "
         f"Temperature: {temp:.1f} C. "
         f"{'Monsoon active.' if is_monsoon else 'Non-monsoon period.'}"

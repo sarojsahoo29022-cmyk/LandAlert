@@ -1,19 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Filter as FilterIcon, Layers3, ChevronDown, CloudRain, Mountain, Compass } from 'lucide-react'
 import {
   hazardLayers,
-  mapMarkers,
-  riskFactors,
   riskRainfallSeries,
-  selectedLocation,
 } from '@/lib/mock-data'
 import { MapPanel } from '../map-panel'
 import { RiskScoreIndicator } from '../risk-score-indicator'
 import { StatusBadge } from '../status-badge'
 import { FilterControls } from '../filter-controls'
 import { RiskTrendChart } from '../risk-trend-chart'
+import {
+  fetchSnapshot,
+  predictRisk,
+  toRiskTone,
+  probabilityToScore,
+  type SnapshotState,
+} from '@/lib/ml-api'
+import type { MapMarker, HazardLayer, RiskLevel } from '@/lib/types'
 
 const riskLevelOptions = ['All', 'Low', 'Moderate', 'High', 'Very high']
 const hazardTypeOptions = [
@@ -24,10 +29,58 @@ const hazardTypeOptions = [
   'Mountain Hazard',
 ]
 
+const STATE_COORDS: Record<string, { x: number; y: number; state: string }> = {
+  'Meghalaya': { x: 62, y: 48, state: 'Meghalaya' },
+  'Assam': { x: 58, y: 38, state: 'Assam' },
+  'Mizoram': { x: 72, y: 68, state: 'Mizoram' },
+  'Manipur': { x: 74, y: 52, state: 'Manipur' },
+  'Sikkim': { x: 52, y: 32, state: 'Sikkim' },
+  'Arunachal Pradesh': { x: 68, y: 22, state: 'Arunachal Pradesh' },
+  'Nagaland': { x: 78, y: 38, state: 'Nagaland' },
+  'Tripura': { x: 66, y: 62, state: 'Tripura' },
+  'West Bengal': { x: 48, y: 42, state: 'West Bengal' },
+}
+
 export function RiskMapScreen() {
-  const [selectedId, setSelectedId] = useState('shillong')
+  const [selectedId, setSelectedId] = useState('Meghalaya')
   const [riskLevel, setRiskLevel] = useState('All')
   const [hazardType, setHazardType] = useState('Landslide')
+  const [snapshotData, setSnapshotData] = useState<SnapshotState[]>([])
+  const [liveMarkers, setLiveMarkers] = useState<MapMarker[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadSnapshot() {
+      const data = await fetchSnapshot()
+      if (data && data.length > 0) {
+        setSnapshotData(data)
+        const markers: MapMarker[] = data.map((s) => {
+          const coords = STATE_COORDS[s.state] || { x: 50, y: 50, state: s.state }
+          const tone = toRiskTone(s.risk_level)
+          return {
+            id: s.state,
+            name: s.state,
+            x: coords.x,
+            y: coords.y,
+            score: probabilityToScore(s.probability),
+            level: tone,
+            hazard: 'landslide',
+          }
+        })
+        setLiveMarkers(markers)
+      }
+      setLoading(false)
+    }
+    loadSnapshot()
+  }, [])
+
+  const selectedState = snapshotData.find((s) => s.state === selectedId)
+  const selectedMarker = liveMarkers.find((m) => m.id === selectedId)
+
+  const filteredMarkers = liveMarkers.filter((m) => {
+    if (riskLevel === 'All') return true
+    return m.level === riskLevel.toLowerCase().replace(' ', '-')
+  })
 
   return (
     <div className="screen-content map-screen">
@@ -35,7 +88,7 @@ export function RiskMapScreen() {
         <div>
           <span className="eyebrow">RISK MAP</span>
           <h1>Regional risk map</h1>
-          <p>Explore demonstration risk layers across North-Eastern India.</p>
+          <p>Explore live ML risk assessments across North-Eastern India.</p>
         </div>
         <div className="map-filters">
           <button className="secondary-button" type="button">
@@ -57,37 +110,50 @@ export function RiskMapScreen() {
       />
 
       <div className="full-map-layout">
-        <MapPanel markers={mapMarkers} layers={hazardLayers} selectedId={selectedId} onSelect={setSelectedId} />
+        <MapPanel
+          markers={filteredMarkers}
+          layers={hazardLayers}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
 
         <section className="panel map-side-panel">
           <div className="section-kicker">SELECTED LOCATION</div>
           <h2>
-            {selectedLocation.name}, {selectedLocation.state}
+            {selectedId}{selectedState ? `, ${selectedState.state}` : ''}
           </h2>
           <div className="side-score">
-            <RiskScoreIndicator score={selectedLocation.score} level={selectedLocation.level} size={110} />
+            <RiskScoreIndicator
+              score={selectedMarker?.score ?? 0}
+              level={selectedMarker?.level ?? 'low'}
+              size={110}
+            />
             <div>
-              <StatusBadge tone={selectedLocation.level}>HIGH RISK</StatusBadge>
-              <p>82% assessment score</p>
+              <StatusBadge tone={selectedMarker?.level ?? 'low'}>
+                {selectedMarker?.level === 'very-high' ? 'VERY HIGH RISK' :
+                 selectedMarker?.level === 'high' ? 'HIGH RISK' :
+                 selectedMarker?.level === 'moderate' ? 'MODERATE RISK' : 'LOW RISK'}
+              </StatusBadge>
+              <p>{selectedMarker?.score ?? 0}% assessment score</p>
             </div>
           </div>
 
           <div className="side-details">
             <div>
               <span>Rainfall</span>
-              <b>{selectedLocation.rainfall}</b>
+              <b>{selectedState?.rainfall_mm ? `${Math.round(selectedState.rainfall_mm)} mm` : 'N/A'}</b>
             </div>
             <div>
-              <span>Slope</span>
-              <b>{selectedLocation.slope}</b>
+              <span>Temperature</span>
+              <b>{selectedState?.temp_2m ? `${selectedState.temp_2m.toFixed(1)}°C` : 'N/A'}</b>
             </div>
             <div>
-              <span>Elevation</span>
-              <b>{selectedLocation.elevation}</b>
+              <span>Probability</span>
+              <b>{selectedState ? `${(selectedState.probability * 100).toFixed(1)}%` : 'N/A'}</b>
             </div>
             <div>
               <span>Historical susceptibility</span>
-              <StatusBadge tone={selectedLocation.historicalSusceptibility}>Medium</StatusBadge>
+              <StatusBadge tone={selectedMarker?.level ?? 'low'}>Based on ML model</StatusBadge>
             </div>
           </div>
 
@@ -95,7 +161,12 @@ export function RiskMapScreen() {
             <div>
               <span>Risk trend</span>
               <b>
-                {selectedLocation.trend} <span className="trend-up">{selectedLocation.trendDelta}</span>
+                {selectedState?.risk_level === 'High' || selectedState?.risk_level === 'Very High'
+                  ? 'Elevated' : 'Stable'}{' '}
+                <span className="trend-up">
+                  {selectedState?.risk_level === 'Very High' ? 'Critical' :
+                   selectedState?.risk_level === 'High' ? 'Rising' : 'Normal'}
+                </span>
               </b>
             </div>
             <div className="mini-chart">

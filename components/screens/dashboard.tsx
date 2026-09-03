@@ -29,6 +29,7 @@ import {
   ML_API_URL,
   type SnapshotState,
   type AlertItem,
+  type DistrictInfo,
 } from '@/lib/ml-api'
 import type { Hotspot, RiskSummary, SelectedLocation, RiskLevel } from '@/lib/types'
 
@@ -97,42 +98,63 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
     loadSnapshot()
   }, [])
 
-  const analyze = async (searchTerm?: string) => {
+  const analyze = async (searchTerm?: string, district?: DistrictInfo | null) => {
     setLoading(true)
+    console.log('[LandAlert] Starting analysis for:', searchTerm || 'default')
 
     const currentMonth = new Date().getMonth() + 1
     const currentYear = new Date().getFullYear()
-    const targetState = STATE_MAPPING[searchTerm?.toLowerCase() || 'shillong'] || 'Meghalaya'
 
+    let targetState = 'Meghalaya'
+    let lat: number | undefined
+    let lon: number | undefined
+    let displayName = 'Shillong'
+
+    if (district) {
+      targetState = district.state
+      lat = district.lat
+      lon = district.lon
+      displayName = district.name
+    } else if (searchTerm) {
+      const lower = searchTerm.toLowerCase()
+      targetState = STATE_MAPPING[lower] || 'Meghalaya'
+      displayName = searchTerm
+    }
+
+    console.log('[LandAlert] Calling predictRisk for:', targetState, currentMonth, currentYear)
     const mlRes = await predictRisk({
       month: currentMonth,
       year: currentYear,
       state: targetState,
+      latitude: lat,
+      longitude: lon,
     })
+    console.log('[LandAlert] predictRisk result:', mlRes)
+
+    const score = mlRes ? probabilityToScore(mlRes.landslide_probability) : 50
+    const tone = mlRes ? toRiskTone(mlRes.risk_level) : ('moderate' as const)
+    const explanation = mlRes?.explanation
+      || `ML service offline. Estimated risk for ${targetState} in ${new Date(currentYear, currentMonth - 1).toLocaleString('default', { month: 'long' })}. Start the ML API server for live predictions.`
+
+    setCurrentLocation({
+      name: displayName,
+      state: targetState,
+      score,
+      level: tone,
+      rainfall: currentMonth >= 6 && currentMonth <= 9 ? '156 mm' : '42 mm',
+      slope: '42',
+      elevation: '1,240 m',
+      historicalSusceptibility: tone,
+      trend: mlRes && mlRes.landslide_probability > 0.5 ? 'Increasing' : 'Stable',
+      trendDelta: mlRes && mlRes.landslide_probability > 0.5 ? 'Rising' : 'Normal',
+      updated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      primaryHazard: 'Landslide Risk (ML Model Output)',
+      cascadingConcern: explanation,
+    })
+    setPredictionExplain(explanation)
 
     setLoading(false)
     setAnalyzed(true)
-
-    if (mlRes) {
-      const score = probabilityToScore(mlRes.landslide_probability)
-      const tone = toRiskTone(mlRes.risk_level)
-      setCurrentLocation({
-        name: searchTerm || 'Shillong',
-        state: targetState,
-        score,
-        level: tone,
-        rainfall: currentMonth >= 6 && currentMonth <= 9 ? '156 mm' : '42 mm',
-        slope: '42',
-        elevation: '1,240 m',
-        historicalSusceptibility: tone,
-        trend: mlRes.landslide_probability > 0.5 ? 'Increasing' : 'Stable',
-        trendDelta: mlRes.landslide_probability > 0.5 ? 'Rising' : 'Normal',
-        updated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        primaryHazard: 'Landslide Risk (ML Model Output)',
-        cascadingConcern: mlRes.explanation,
-      })
-      setPredictionExplain(mlRes.explanation)
-    }
   }
 
   const riskCards = [
@@ -173,7 +195,6 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
 
       {analyzed && (
         <div className="analyze-banner">
-          <span className="spinner" aria-hidden />
           Showing live ML risk assessment for <strong>{currentLocation.name}, {currentLocation.state}</strong>
           <button onClick={() => setAnalyzed(false)} aria-label="Dismiss" type="button">
             <X size={15} />
@@ -181,7 +202,12 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
         </div>
       )}
 
-      <RegionalOverview hotspots={liveHotspots} />
+      <RegionalOverview
+        hotspots={liveHotspots}
+        monitoredCount={9}
+        elevatedCount={liveSummary.high + liveSummary['very-high']}
+        warningCount={liveSummary['very-high']}
+      />
 
       <div className="risk-cards">
         {riskCards.map((c) => (

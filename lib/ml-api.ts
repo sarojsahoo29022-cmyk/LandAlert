@@ -2,7 +2,7 @@
 // All calls fail soft: if the service is not running, callers fall back to mock UI data.
 
 export const ML_API_URL =
-  process.env.NEXT_PUBLIC_ML_API_URL ?? 'http://127.0.0.1:8000'
+  process.env.NEXT_PUBLIC_ML_API_URL ?? '/api/ml'
 
 export type RiskLevelRaw = 'Low' | 'Moderate' | 'High' | 'Very High'
 
@@ -39,6 +39,9 @@ export interface SnapshotState {
   risk_level: string
   probability: number
   locations: number
+  events: number
+  temp_2m: number
+  rainfall_mm: number
 }
 
 export interface AlertItem {
@@ -54,13 +57,21 @@ export interface AlertItem {
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     const res = await fetch(`${ML_API_URL}${path}`, {
       ...init,
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     })
-    if (!res.ok) return null
+    clearTimeout(timeout)
+    if (!res.ok) {
+      console.warn(`[ML API] ${path} returned ${res.status}`)
+      return null
+    }
     return (await res.json()) as T
-  } catch {
+  } catch (e) {
+    console.warn(`[ML API] ${path} failed:`, e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -70,8 +81,15 @@ export async function fetchModelMetrics(): Promise<ModelMetrics | null> {
   return data?.metrics ?? null
 }
 
-export async function fetchDistricts(): Promise<string[] | null> {
-  const data = await getJson<{ districts: string[] }>('/districts')
+export interface DistrictInfo {
+  name: string
+  state: string
+  lat: number
+  lon: number
+}
+
+export async function fetchDistricts(): Promise<DistrictInfo[] | null> {
+  const data = await getJson<{ districts: DistrictInfo[] }>('/districts')
   return data?.districts ?? null
 }
 
@@ -101,7 +119,14 @@ export async function fetchRiskSummary(): Promise<{
   'very-high': number
 } | null> {
   const data = await getJson<{ summary: Record<string, number> }>('/risk-summary')
-  return data?.summary ?? null
+  if (!data?.summary) return null
+  const s = data.summary
+  return {
+    low: s.low ?? 0,
+    moderate: s.moderate ?? 0,
+    high: s.high ?? 0,
+    'very-high': s['very-high'] ?? 0,
+  }
 }
 
 export async function fetchHistory(stateName: string) {
@@ -114,6 +139,7 @@ export async function fetchHistory(stateName: string) {
       year: number
       month: number
       temp_2m: number
+      rainfall_mm: number
       is_monsoon: boolean
       latitude: number
       longitude: number

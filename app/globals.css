@@ -158,6 +158,46 @@ button { cursor: pointer; }
   .map-search { width: calc(100% - 32px); }
 }
 
+/* Search dropdown autocomplete */
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(22,58,80,.12);
+}
+.search-dropdown-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background .1s;
+}
+.search-dropdown-item:hover,
+.search-dropdown-item.highlighted {
+  background: #eef5f4;
+}
+.search-dropdown-item + .search-dropdown-item {
+  border-top: 1px solid var(--border);
+}
+.search-dropdown-item span:first-child {
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 13px;
+}
+.search-dropdown-item span:last-child {
+  font-size: 12px;
+  color: var(--slate);
+}
+
 /* ML risk predictor form */
 .predict-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
 .predict-field { display: flex; flex-direction: column; gap: 6px; }

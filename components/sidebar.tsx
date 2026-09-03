@@ -4,25 +4,26 @@ import { Activity, MapPin, SlidersHorizontal, Bell, FileText, X, Settings2 } fro
 import { cn } from '@/lib/utils'
 import { Logo } from './logo'
 
-const navItems = [
-  { label: 'Dashboard', icon: Activity, count: 0 },
-  { label: 'Risk Map', icon: MapPin, count: 0 },
-  { label: 'Analytics', icon: SlidersHorizontal, count: 0 },
-  { label: 'Alerts', icon: Bell, count: 2 },
-  { label: 'Methodology', icon: FileText, count: 0 },
-]
-
 export function Sidebar({
   active,
   setActive,
   mobileOpen,
   setMobileOpen,
+  alertCount = 0,
 }: {
   active: string
   setActive: (label: string) => void
   mobileOpen: boolean
   setMobileOpen: (open: boolean) => void
+  alertCount?: number
 }) {
+  const navItems = [
+    { label: 'Dashboard', icon: Activity, count: 0 },
+    { label: 'Risk Map', icon: MapPin, count: 0 },
+    { label: 'Analytics', icon: SlidersHorizontal, count: 0 },
+    { label: 'Alerts', icon: Bell, count: alertCount },
+    { label: 'Methodology', icon: FileText, count: 0 },
+  ]
   return (
     <aside className={cn('sidebar', mobileOpen && 'mobile-open')}>
       <div className="sidebar-top">

@@ -9,6 +9,7 @@ import {
   predictRisk,
   toRiskTone,
   type PredictFeatures,
+  type DistrictInfo,
 } from '@/lib/ml-api'
 
 const STATES = [
@@ -36,7 +37,7 @@ const DEFAULTS: PredictFeatures = {
 
 export function RiskPredictor() {
   const [form, setForm] = useState<PredictFeatures>(DEFAULTS)
-  const [districts, setDistricts] = useState<string[]>([])
+  const [districts, setDistricts] = useState<DistrictInfo[]>([])
   const [result, setResult] = useState<null | { probability: number; level: string }>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +47,10 @@ export function RiskPredictor() {
     fetchDistricts().then((d) => {
       if (d && d.length > 0) {
         setDistricts(d)
-        setForm((f) => (STATES.includes(f.state) ? f : { ...f, state: d[0] }))
+        const states = [...new Set(d.map((x) => x.state))]
+        if (!states.includes(form.state)) {
+          setForm((f) => ({ ...f, state: states[0] || 'Meghalaya' }))
+        }
       } else {
         setOffline(true)
       }
@@ -87,7 +91,10 @@ export function RiskPredictor() {
         <label className="predict-field full">
           <span>State</span>
           <select value={form.state} onChange={(e) => update('state', e.target.value)}>
-            {(districts.length > 0 ? districts : STATES).map((s) => (
+            {(districts.length > 0
+              ? [...new Set(districts.map((x) => x.state))]
+              : STATES
+            ).map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

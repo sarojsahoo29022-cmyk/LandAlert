@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Download, ChevronDown, CloudRain } from 'lucide-react'
 import {
-  historicalEvents,
   rainfallSeries,
 } from '@/lib/mock-data'
 import { ChartCard } from '../chart-card'
@@ -13,14 +12,45 @@ import { DataTable } from '../data-table'
 import { StatusBadge } from '../status-badge'
 import { HazardCascadeTimeline } from '../hazard-cascade-timeline'
 import { RiskPredictor } from '../risk-predictor'
-import { fetchModelMetrics, type ModelMetrics } from '@/lib/ml-api'
+import { fetchModelMetrics, fetchHistory, type ModelMetrics } from '@/lib/ml-api'
+import type { HistoricalEvent } from '@/lib/types'
+
+const STATES = [
+  'Meghalaya', 'Mizoram', 'Manipur', 'Sikkim', 'Arunachal Pradesh',
+  'Assam', 'Nagaland', 'Tripura', 'West Bengal',
+]
 
 export function AnalyticsScreen() {
   const [liveMetrics, setLiveMetrics] = useState<ModelMetrics | null>(null)
+  const [selectedState, setSelectedState] = useState('Meghalaya')
+  const [historicalEvents, setHistoricalEvents] = useState<HistoricalEvent[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
     fetchModelMetrics().then(setLiveMetrics)
   }, [])
+
+  const loadHistory = useCallback(async (state: string) => {
+    setLoadingHistory(true)
+    const data = await fetchHistory(state)
+    if (data && data.events) {
+      const events: HistoricalEvent[] = data.events.slice(0, 10).map((e) => ({
+        date: `${e.year}-${String(e.month).padStart(2, '0')}`,
+        location: state,
+        rainfall: e.rainfall_mm ? `${Math.round(e.rainfall_mm)} mm` : (e.is_monsoon ? 'Monsoon' : 'Non-monsoon'),
+        risk: e.is_monsoon ? 'moderate' : 'low',
+        status: 'Recorded',
+      }))
+      setHistoricalEvents(events)
+    } else {
+      setHistoricalEvents([])
+    }
+    setLoadingHistory(false)
+  }, [])
+
+  useEffect(() => {
+    loadHistory(selectedState)
+  }, [selectedState, loadHistory])
 
   const metricTiles = liveMetrics
     ? [
@@ -37,6 +67,21 @@ export function AnalyticsScreen() {
         { label: 'F1 Score', value: '--', note: 'Waiting for model' },
       ]
 
+  const handleExport = () => {
+    const exportData = {
+      modelMetrics: liveMetrics,
+      historicalEvents,
+      exportedAt: new Date().toISOString(),
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `landalert-analytics-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="screen-content">
       <div className="screen-header">
@@ -45,7 +90,7 @@ export function AnalyticsScreen() {
           <h1>Risk intelligence</h1>
           <p>Explore historical patterns and model-ready indicators across the region.</p>
         </div>
-        <button className="secondary-button" type="button">
+        <button className="secondary-button" type="button" onClick={handleExport}>
           <Download size={16} />
           Export report
         </button>
@@ -124,22 +169,39 @@ export function AnalyticsScreen() {
           kicker="EVENT RECORD"
           title="Historical events"
           legend={
-            <button className="text-button" type="button">
-              View archive <ChevronDown size={14} />
-            </button>
+            <select
+              className="select-chip"
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', color: 'var(--foreground)', fontSize: '12px' }}
+            >
+              {STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           }
         >
-          <DataTable
-            columns={['Date', 'Location', 'Rainfall', 'Risk', 'Status']}
-            rows={historicalEvents.map((e) => [e.date, e.location, e.rainfall, e.risk, e.status])}
-            renderCell={(col, value) =>
-              col === 'Risk' ? (
-                <StatusBadge tone={value.toLowerCase().replace(' ', '-') as never}>{value}</StatusBadge>
-              ) : (
-                value
-              )
-            }
-          />
+          {loadingHistory ? (
+            <div className="empty-state">
+              <p>Loading historical data...</p>
+            </div>
+          ) : historicalEvents.length > 0 ? (
+            <DataTable
+              columns={['Date', 'Location', 'Rainfall', 'Risk', 'Status']}
+              rows={historicalEvents.map((e) => [e.date, e.location, e.rainfall, e.risk, e.status])}
+              renderCell={(col, value) =>
+                col === 'Risk' ? (
+                  <StatusBadge tone={value.toLowerCase().replace(' ', '-') as never}>{value}</StatusBadge>
+                ) : (
+                  value
+                )
+              }
+            />
+          ) : (
+            <div className="empty-state">
+              <p>No historical events found for {selectedState}.</p>
+            </div>
+          )}
         </ChartCard>
 
         <ChartCard
