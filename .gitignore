@@ -25,6 +25,8 @@ ml/api.err
 
 # Conversation memory (local notes, not project source)
 CONVERSATION_MEMORY.md
+PROJECT_PLAN.md
+DATABASE_PLAN.md
 
 # Python cache
 __pycache__/
@@ -33,3 +35,11 @@ __pycache__/
 ml/test_model.py
 ml/test_api_integration.py
 ml/inspect_model.py
+
+# Debug output logs
+api_error.txt
+api_output.txt
+
+# Binary ML model files
+ml_model/*.pkl
+ml/*.joblib

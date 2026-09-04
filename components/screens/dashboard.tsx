@@ -7,7 +7,6 @@ import {
   alerts as mockAlerts,
   mapMarkers,
   hazardLayers,
-  riskFactors,
   selectedLocation as initialSelectedLocation,
 } from '@/lib/mock-data'
 import { LocationSearch } from '../location-search'
@@ -31,7 +30,7 @@ import {
   type AlertItem,
   type DistrictInfo,
 } from '@/lib/ml-api'
-import type { Hotspot, RiskSummary, SelectedLocation, RiskLevel } from '@/lib/types'
+import type { Hotspot, RiskSummary, SelectedLocation, RiskLevel, RiskFactor } from '@/lib/types'
 
 const STATE_MAPPING: Record<string, string> = {
   shillong: 'Meghalaya',
@@ -67,6 +66,12 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
   })
   const [liveAlerts, setLiveAlerts] = useState<AlertItem[]>([])
   const [predictionExplain, setPredictionExplain] = useState('')
+  const [liveRiskFactors, setLiveRiskFactors] = useState<RiskFactor[]>([
+    { name: 'Rainfall', impact: 'MEDIUM IMPACT', width: '50%', tone: 'moderate' },
+    { name: 'Temperature', impact: 'MEDIUM IMPACT', width: '50%', tone: 'moderate' },
+    { name: 'Elevation', impact: 'LOWER IMPACT', width: '30%', tone: 'low' },
+    { name: 'Slope', impact: 'LOWER IMPACT', width: '30%', tone: 'low' },
+  ])
 
   // Load ML snapshot on mount
   useEffect(() => {
@@ -136,14 +141,17 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
     const explanation = mlRes?.explanation
       || `ML service offline. Estimated risk for ${targetState} in ${new Date(currentYear, currentMonth - 1).toLocaleString('default', { month: 'long' })}. Start the ML API server for live predictions.`
 
+    const terrain = mlRes?.terrain
+    const rainfallVal = mlRes?.factors?.rainfall_mm ?? (currentMonth >= 6 && currentMonth <= 9 ? '156 mm' : '42 mm')
+
     setCurrentLocation({
       name: displayName,
       state: targetState,
       score,
       level: tone,
-      rainfall: currentMonth >= 6 && currentMonth <= 9 ? '156 mm' : '42 mm',
-      slope: '42',
-      elevation: '1,240 m',
+      rainfall: rainfallVal,
+      slope: terrain ? `${terrain.slope_deg.toFixed(1)}` : 'N/A',
+      elevation: terrain ? `${terrain.elevation_m.toFixed(0)} m` : 'N/A',
       historicalSusceptibility: tone,
       trend: mlRes && mlRes.landslide_probability > 0.5 ? 'Increasing' : 'Stable',
       trendDelta: mlRes && mlRes.landslide_probability > 0.5 ? 'Rising' : 'Normal',
@@ -152,6 +160,29 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
       cascadingConcern: explanation,
     })
     setPredictionExplain(explanation)
+
+    if (mlRes?.factors) {
+      const f = mlRes.factors
+      const factors: RiskFactor[] = []
+      
+      const intensityToFactor = (val: string, name: string, fallbackWidth: string): RiskFactor => {
+        const upper = (val || '').toUpperCase()
+        if (upper.includes('HEAVY') || upper.includes('ELEVATED') || upper === 'ACTIVE' || upper.includes('STEEP') || upper.includes('VERY STEEP')) {
+          return { name, impact: 'HIGH IMPACT', width: '85%', tone: 'high' }
+        }
+        if (upper.includes('MODERATE') || upper.includes('MOUNTAIN') || upper === 'INACTIVE') {
+          return { name, impact: 'MEDIUM IMPACT', width: '55%', tone: 'moderate' }
+        }
+        return { name, impact: 'LOWER IMPACT', width: fallbackWidth, tone: 'low' }
+      }
+
+      factors.push(intensityToFactor(f.rainfall_intensity, 'Rainfall', '40%'))
+      factors.push(intensityToFactor(f.temperature, 'Temperature', '35%'))
+      factors.push(intensityToFactor(f.elevation_zone || '', 'Elevation', '30%'))
+      factors.push(intensityToFactor(f.slope_category || '', 'Slope', '25%'))
+
+      setLiveRiskFactors(factors)
+    }
 
     setLoading(false)
     setAnalyzed(true)
@@ -242,7 +273,7 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
           }
         >
           <div className="factor-list">
-            {riskFactors.map((f) => (
+            {liveRiskFactors.map((f) => (
               <RiskFactorBar key={f.name} {...f} />
             ))}
           </div>

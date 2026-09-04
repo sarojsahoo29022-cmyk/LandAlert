@@ -5,7 +5,9 @@
     "month",
     "temp_2m",
     "is_monsoon",
-    "rainfall_mm"
+    "rainfall_mm",
+    "elevation_m",
+    "slope_deg"
   ],
   "state_mapping": {
     "Arunachal Pradesh": 0,
@@ -24,23 +26,35 @@
     "Landslide"
   ],
   "metrics": {
-    "accuracy": 0.7803,
-    "precision": 0.5714,
-    "recall": 0.4944,
-    "f1": 0.5301,
-    "roc_auc": 0.8179,
+    "accuracy": 0.769,
+    "precision": 0.5493,
+    "recall": 0.4382,
+    "f1": 0.4875,
+    "roc_auc": 0.7915,
     "confusion_matrix": [
       [
-        233,
-        33
+        234,
+        32
       ],
       [
-        45,
-        44
+        50,
+        39
       ]
     ],
     "positive_rate_train": 0.2498
   },
-  "feature_importances": {},
-  "scope": "North-East India with Rainfall (NASA POWER + IMD)"
+  "feature_importances": {
+    "latitude": -0.0054,
+    "longitude": 0.0237,
+    "month": 0.0211,
+    "temp_2m": 0.0518,
+    "is_monsoon": 0.0,
+    "rainfall_mm": 0.0834,
+    "elevation_m": -0.0003,
+    "slope_deg": -0.0045,
+    "state_Arunachal Pradesh": -0.0011
+  },
+  "native_feature_importances": {},
+  "scope": "North-East India with Rainfall + Terrain (SRTM)",
+  "model_version": "v3_terrain"
 }

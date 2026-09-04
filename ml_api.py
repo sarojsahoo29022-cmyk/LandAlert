@@ -9,7 +9,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-app = FastAPI(title="GeoShield ML API", version="2.0.0")
+app = FastAPI(title="GeoShield ML API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,12 +24,14 @@ MODEL_PATH = os.path.join(BASE_DIR, "ml_model", "rf_landslide_model.pkl")
 META_PATH = os.path.join(BASE_DIR, "ml_model", "model_meta.json")
 DATA_PATH = os.path.join(BASE_DIR, "datasets", "ne_india_landslide_enriched.csv")
 RAINFALL_CSV = os.path.join(BASE_DIR, "Rainfall_Data_LL.csv")
+TERRAIN_CSV = os.path.join(BASE_DIR, "datasets", "ne_terrain_lookup.csv")
 
 model_raw = None
 pipeline = None
 meta = None
 training_data = None
 rainfall_lookup = None
+terrain_lookup = None
 
 MONTH_COLS = {1: "JAN", 2: "FEB", 3: "MAR", 4: "APR", 5: "MAY", 6: "JUN",
               7: "JUL", 8: "AUG", 9: "SEP", 10: "OCT", 11: "NOV", 12: "DEC"}
@@ -50,7 +52,7 @@ STATE_AVG_COORDS = {}
 
 
 def load_model():
-    global model_raw, pipeline, meta, training_data, rainfall_lookup, STATE_AVG_COORDS
+    global model_raw, pipeline, meta, training_data, rainfall_lookup, terrain_lookup, STATE_AVG_COORDS
     if model_raw is None:
         model_raw = joblib.load(MODEL_PATH)
     if pipeline is None:
@@ -65,10 +67,45 @@ def load_model():
         training_data = pd.read_csv(DATA_PATH)
     if rainfall_lookup is None:
         rainfall_lookup = _build_rainfall_lookup()
+    if terrain_lookup is None:
+        terrain_lookup = _build_terrain_lookup()
+        print(f"[startup] Terrain lookup loaded: {len(terrain_lookup)} entries")
     if not STATE_AVG_COORDS and training_data is not None:
         for st in training_data["state"].unique():
             sub = training_data[training_data["state"] == st]
-            STATE_AVG_COORDS[st] = {"lat": float(sub["latitude"].mean()), "lon": float(sub["longitude"].mean())}
+            avg_lat = float(sub["latitude"].mean())
+            avg_lon = float(sub["longitude"].mean())
+            
+            # Compute average terrain for this state from all coordinates
+            state_terrains = []
+            for _, row in sub.iterrows():
+                key = (round(row["latitude"], 4), round(row["longitude"], 4))
+                if key in terrain_lookup:
+                    state_terrains.append(terrain_lookup[key])
+            
+            if state_terrains:
+                elev_vals = [t["elevation_m"] for t in state_terrains if t.get("elevation_m") is not None and not np.isnan(t.get("elevation_m"))]
+                slope_vals = [t["slope_deg"] for t in state_terrains if t.get("slope_deg") is not None and not np.isnan(t.get("slope_deg"))]
+                avg_elev = float(np.mean(elev_vals)) if elev_vals else 500.0
+                avg_slope = float(np.mean(slope_vals)) if slope_vals else 20.0
+            else:
+                avg_elev = 500.0
+                avg_slope = 20.0
+            
+            if np.isnan(avg_elev):
+                avg_elev = 500.0
+            if np.isnan(avg_slope):
+                avg_slope = 20.0
+            
+            STATE_AVG_COORDS[st] = {
+                "lat": avg_lat,
+                "lon": avg_lon,
+                "elevation_m": avg_elev,
+                "slope_deg": avg_slope,
+            }
+        print(f"[startup] State avg coords computed for {len(STATE_AVG_COORDS)} states")
+        for st, coords in list(STATE_AVG_COORDS.items())[:3]:
+            print(f"  {st}: elev={coords['elevation_m']:.0f}m, slope={coords['slope_deg']:.1f}deg")
 
 
 def _build_rainfall_lookup():
@@ -80,6 +117,56 @@ def _build_rainfall_lookup():
         monthly = {m: float(row[MONTH_COLS[m]]) for m in range(1, 13)}
         lookup[key] = monthly
     return lookup
+
+
+def _build_terrain_lookup():
+    """Load terrain lookup from CSV (elevation + slope per coordinate)."""
+    lookup = {}
+    if os.path.exists(TERRAIN_CSV):
+        try:
+            terrain_df = pd.read_csv(TERRAIN_CSV)
+            for _, row in terrain_df.iterrows():
+                key = (round(row["latitude"], 4), round(row["longitude"], 4))
+                lookup[key] = {
+                    "elevation_m": float(row["elevation_m"]),
+                    "slope_deg": float(row["slope_deg"]),
+                }
+        except Exception as e:
+            print(f"Warning: Could not load terrain data: {e}")
+    return lookup
+
+
+def _get_terrain_for_coords(lat: float, lon: float) -> dict:
+    """Get terrain data for coordinates, with fallback to state defaults."""
+    if terrain_lookup:
+        # Try exact match first
+        key = (round(lat, 4), round(lon, 4))
+        if key in terrain_lookup:
+            return terrain_lookup[key]
+        
+        # Try nearest neighbor (within 0.05 degrees ~ 5km)
+        min_dist = float("inf")
+        best = None
+        for (tlat, tlon), terrain in terrain_lookup.items():
+            dist = ((lat - tlat) ** 2 + (lon - tlon) ** 2) ** 0.5
+            if dist < min_dist and dist < 0.05:
+                min_dist = dist
+                best = terrain
+        if best:
+            return best
+    
+    # Fallback: return default terrain
+    return {"elevation_m": 500.0, "slope_deg": 20.0}
+
+
+def _get_state_terrain(state: str) -> dict:
+    """Get average terrain for a state."""
+    if STATE_AVG_COORDS and state in STATE_AVG_COORDS:
+        return {
+            "elevation_m": STATE_AVG_COORDS[state].get("elevation_m", 500),
+            "slope_deg": STATE_AVG_COORDS[state].get("slope_deg", 20),
+        }
+    return {"elevation_m": 500.0, "slope_deg": 20.0}
 
 
 def get_rainfall(state: str, year: int, month: int) -> float:
@@ -116,6 +203,8 @@ class PredictRequest(BaseModel):
     state: str
     temp_2m: Optional[float] = None
     rainfall_mm: Optional[float] = None
+    elevation_m: Optional[float] = None
+    slope_deg: Optional[float] = None
 
 
 def get_risk_level(prob: float) -> str:
@@ -137,20 +226,54 @@ def get_temp_for_month_state(state: str, month: int) -> float:
     return 21.0
 
 
-def _predict_features(state: str, month: int, year: int, temp: float, rainfall: float, lat: float = None, lon: float = None):
+def _predict_features(state: str, month: int, year: int, temp: float, rainfall: float,
+                      lat: float = None, lon: float = None,
+                      elevation_m: float = None, slope_deg: float = None):
+    state_coords = STATE_AVG_COORDS.get(state, {"lat": 26.0, "lon": 92.0, "elevation_m": 500, "slope_deg": 20})
+    
     if lat is None or lon is None:
-        coords = STATE_AVG_COORDS.get(state, {"lat": 26.0, "lon": 92.0})
-        lat = coords["lat"]
-        lon = coords["lon"]
+        lat = state_coords["lat"]
+        lon = state_coords["lon"]
+    
+    if elevation_m is None or slope_deg is None:
+        if lat == state_coords["lat"] and lon == state_coords["lon"]:
+            elevation_m = state_coords.get("elevation_m", 500.0)
+            slope_deg = state_coords.get("slope_deg", 20.0)
+        else:
+            terrain = _get_terrain_for_coords(lat, lon)
+            if elevation_m is None:
+                elevation_m = terrain.get("elevation_m", 500.0)
+            if slope_deg is None:
+                slope_deg = terrain.get("slope_deg", 20.0)
+    
+    if elevation_m is None or np.isnan(elevation_m):
+        elevation_m = 500.0
+    if slope_deg is None or np.isnan(slope_deg):
+        slope_deg = 20.0
+
     is_monsoon = 1 if month in [6, 7, 8, 9] else 0
-    features = pd.DataFrame([{
-        "latitude": lat, "longitude": lon, "month": month,
-        "temp_2m": temp, "is_monsoon": is_monsoon, "rainfall_mm": rainfall, "state": state,
-    }])
+    
+    # Build features based on model version
+    feature_names = meta.get("feature_names", []) if meta else []
+    
+    if "elevation_m" in feature_names and "slope_deg" in feature_names:
+        # v3 model with terrain
+        features = pd.DataFrame([{
+            "latitude": lat, "longitude": lon, "month": month,
+            "temp_2m": temp, "is_monsoon": is_monsoon, "rainfall_mm": rainfall,
+            "elevation_m": elevation_m, "slope_deg": slope_deg, "state": state,
+        }])
+    else:
+        # v2 model without terrain
+        features = pd.DataFrame([{
+            "latitude": lat, "longitude": lon, "month": month,
+            "temp_2m": temp, "is_monsoon": is_monsoon, "rainfall_mm": rainfall, "state": state,
+        }])
+    
     prob = float(pipeline.predict_proba(features)[0][1])
     prediction = int(pipeline.predict(features)[0])
     risk_level = get_risk_level(prob)
-    return prob, prediction, risk_level
+    return prob, prediction, risk_level, elevation_m, slope_deg
 
 
 @app.get("/health")
@@ -210,14 +333,27 @@ async def predict(req: PredictRequest):
         lat = coords["lat"]
         lon = coords["lon"]
 
+    elevation_m = req.elevation_m
+    slope_deg = req.slope_deg
+
     is_monsoon = 1 if month in [6, 7, 8, 9] else 0
-    prob, prediction, risk_level = _predict_features(state, month, year, temp, rainfall, lat, lon)
+    prob, prediction, risk_level, elev, slope = _predict_features(
+        state, month, year, temp, rainfall, lat, lon, elevation_m, slope_deg
+    )
+
+    # Classify terrain steepness
+    slope_category = "FLAT" if slope < 5 else ("MODERATE" if slope < 20 else ("STEEP" if slope < 35 else "VERY STEEP"))
+    
+    # Classify elevation zone
+    elev_zone = "LOWLAND" if elev < 300 else ("HILLS" if elev < 1000 else ("MOUNTAIN" if elev < 3000 else "HIGH MOUNTAIN"))
 
     factors = {
         "rainfall_mm": f"{rainfall:.0f} mm",
         "rainfall_intensity": "HEAVY" if rainfall > 300 else ("MODERATE" if rainfall > 100 else "LOW"),
         "temperature": "ELEVATED" if temp > 22 else "MODERATE",
         "monsoon": "ACTIVE" if is_monsoon else "INACTIVE",
+        "elevation": f"{elev:.0f} m ({elev_zone})",
+        "slope": f"{slope:.1f} degrees ({slope_category})",
         "location": f"{lat:.2f}, {lon:.2f}",
         "historical_susceptibility": risk_level.upper(),
     }
@@ -226,6 +362,7 @@ async def predict(req: PredictRequest):
         f"Model predicts {risk_level} risk ({prob*100:.0f}%) for {state} in {datetime(year, month, 1).strftime('%B %Y')}. "
         f"Rainfall: {rainfall:.0f} mm ({'heavy' if rainfall > 300 else 'moderate' if rainfall > 100 else 'low'}). "
         f"Temperature: {temp:.1f} C. "
+        f"Elevation: {elev:.0f} m ({elev_zone}). Slope: {slope:.1f} deg ({slope_category}). "
         f"{'Monsoon active.' if is_monsoon else 'Non-monsoon period.'}"
     )
 
@@ -236,6 +373,12 @@ async def predict(req: PredictRequest):
         "prediction": prediction,
         "factors": factors,
         "explanation": explanation,
+        "terrain": {
+            "elevation_m": round(elev, 1),
+            "slope_deg": round(slope, 2),
+            "elevation_zone": elev_zone,
+            "slope_category": slope_category,
+        },
     }
 
 
@@ -251,7 +394,7 @@ async def snapshot():
     for st in states:
         temp = get_temp_for_month_state(st, current_month)
         rainfall = get_rainfall(st, current_year, current_month)
-        prob, _, risk_level = _predict_features(st, current_month, current_year, temp, rainfall)
+        prob, _, risk_level, elev, slope = _predict_features(st, current_month, current_year, temp, rainfall)
 
         count = len(training_data[training_data["state"] == st]) if training_data is not None else 0
         events = int((training_data[(training_data["state"] == st) & (training_data["landslide_occurred"] == 1)].shape[0])) if training_data is not None else 0
@@ -264,6 +407,8 @@ async def snapshot():
             "events": events,
             "temp_2m": round(temp, 1),
             "rainfall_mm": round(rainfall, 1),
+            "elevation_m": round(elev, 0),
+            "slope_deg": round(slope, 1),
         })
 
     return {"states": results, "month": current_month, "year": current_year}
@@ -292,6 +437,7 @@ async def history(state_name: str):
         yr = int(row["year"])
         mo = int(row["month"])
         rf = get_rainfall(state_name, yr, mo)
+        terrain = _get_terrain_for_coords(float(row["latitude"]), float(row["longitude"]))
         events.append({
             "year": yr,
             "month": mo,
@@ -300,6 +446,8 @@ async def history(state_name: str):
             "is_monsoon": bool(row["is_monsoon"]),
             "latitude": float(row["latitude"]),
             "longitude": float(row["longitude"]),
+            "elevation_m": round(terrain.get("elevation_m", 0), 0),
+            "slope_deg": round(terrain.get("slope_deg", 0), 1),
         })
 
     total = len(subset)
@@ -343,7 +491,8 @@ async def alerts():
                 "text": (
                     f"ML model detects {'elevated' if st['risk_level'] == 'High' else 'critical'} "
                     f"landslide risk in {st['state']} ({st['probability']*100:.0f}% probability). "
-                    f"Temp: {st.get('temp_2m', 'N/A')} C, Rainfall: {st.get('rainfall_mm', 'N/A')} mm."
+                    f"Temp: {st.get('temp_2m', 'N/A')} C, Rainfall: {st.get('rainfall_mm', 'N/A')} mm. "
+                    f"Elevation: {st.get('elevation_m', 'N/A')} m, Slope: {st.get('slope_deg', 'N/A')} deg."
                 ),
                 "status": "active" if st["risk_level"] == "Very High" else "monitoring",
             })

@@ -13,6 +13,15 @@ export interface PredictFeatures {
   year: number
   temp_2m?: number
   state: string
+  elevation_m?: number
+  slope_deg?: number
+}
+
+export interface TerrainData {
+  elevation_m: number
+  slope_deg: number
+  elevation_zone: string
+  slope_category: string
 }
 
 export interface PredictResult {
@@ -22,6 +31,7 @@ export interface PredictResult {
   prediction: number
   factors: Record<string, string>
   explanation: string
+  terrain?: TerrainData
 }
 
 export interface ModelMetrics {
@@ -42,6 +52,8 @@ export interface SnapshotState {
   events: number
   temp_2m: number
   rainfall_mm: number
+  elevation_m: number
+  slope_deg: number
 }
 
 export interface AlertItem {
@@ -143,6 +155,8 @@ export async function fetchHistory(stateName: string) {
       is_monsoon: boolean
       latitude: number
       longitude: number
+      elevation_m: number
+      slope_deg: number
     }[]
   }>(`/history/${encodeURIComponent(stateName)}`)
 }
