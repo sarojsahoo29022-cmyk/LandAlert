@@ -170,36 +170,24 @@ When continuing:
 
 ---
 
-## CURRENT TASK: Leaflet Map Integration (IN PROGRESS)
+## CURRENT TASK: Leaflet Map Integration (COMPLETED ✅)
 
-### What was done today:
-- Merged Mlrestpart branch into master, pushed to GitHub, deleted subbranch
-- Updated .gitignore (added debug logs, binary model files)
-- Explored current CSS-based map implementation (MapPanel component)
-- Decided to replace CSS map with real Leaflet/OpenStreetMap
-
-### What needs to be done next:
-1. **Install packages** (npm install timed out - retry tomorrow):
-   - `npm install leaflet react-leaflet @types/leaflet`
-2. **Create LeafletMap component** (`components/leaflet-map.tsx`):
-   - Use OpenStreetMap tiles (free, no API key)
-   - Real lat/lon markers from API districts
-   - Risk-colored circle markers (green/yellow/orange/red)
-   - Click marker -> select state -> show details in side panel
-   - Center on NE India (~25.5°N, 93°E), zoom 6
-3. **Update risk-map.tsx**:
-   - Replace `MapPanel` import with new `LeafletMap`
-   - Replace `STATE_COORDS` percentage positions with real lat/lon
-   - Keep side panel, filters, risk score indicator as-is
-4. **Add Leaflet CSS** to globals.css:
-   - `@import 'leaflet/dist/leaflet.css';` or link tag
-5. **Test build**: `npm run build`
-
-### Key files to modify:
-- `components/leaflet-map.tsx` (NEW - main Leaflet component)
-- `components/screens/risk-map.tsx` (replace MapPanel with LeafletMap)
-- `app/globals.css` (add Leaflet CSS)
-- `components/map-panel.tsx` (keep for dashboard mini-map if needed)
+### What was done today (Sep 5):
+- Installed leaflet, react-leaflet, @types/leaflet via pnpm
+- Created `components/leaflet-map.tsx` - Real Leaflet/OpenStreetMap component
+  - OpenStreetMap tiles (free, no API key)
+  - Real lat/lon markers from STATE_GEO for all 9 NE India states
+  - Risk-colored circle markers (green/yellow/orange/red) with divIcon
+  - Click marker -> select state -> show details in side panel
+  - Zoom controls, layer selector, search bar, risk legend
+  - Dynamic import (SSR-safe for Next.js)
+- Updated `components/screens/risk-map.tsx`:
+  - Replaced `MapPanel` import with dynamic `LeafletMap`
+  - Removed CSS-based STATE_COORDS (percentage positions)
+  - Markers now use real lat/lng from LeafletMap's STATE_GEO
+- Added Leaflet CSS + custom styles to `app/globals.css`
+- `npm run build` - SUCCESS, no TypeScript errors
+- Added elevation + slope to risk-map side panel (from ML API terrain data)
 
 ### Real coordinates for NE India states:
 ```typescript

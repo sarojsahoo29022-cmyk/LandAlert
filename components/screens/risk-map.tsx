@@ -140,6 +140,14 @@ export function RiskMapScreen() {
               <b>{selectedState?.temp_2m ? `${selectedState.temp_2m.toFixed(1)}°C` : 'N/A'}</b>
             </div>
             <div>
+              <span>Elevation</span>
+              <b>{selectedState?.elevation_m ? `${Math.round(selectedState.elevation_m)} m` : 'N/A'}</b>
+            </div>
+            <div>
+              <span>Slope</span>
+              <b>{selectedState?.slope_deg ? `${selectedState.slope_deg.toFixed(1)}°` : 'N/A'}</b>
+            </div>
+            <div>
               <span>Probability</span>
               <b>{selectedState ? `${(selectedState.probability * 100).toFixed(1)}%` : 'N/A'}</b>
             </div>
