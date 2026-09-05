@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Filter as FilterIcon, Layers3, ChevronDown, CloudRain, Mountain, Compass } from 'lucide-react'
 import {
   hazardLayers,
   riskRainfallSeries,
 } from '@/lib/mock-data'
-import { MapPanel } from '../map-panel'
 import { RiskScoreIndicator } from '../risk-score-indicator'
 import { StatusBadge } from '../status-badge'
 import { FilterControls } from '../filter-controls'
@@ -20,6 +20,11 @@ import {
 } from '@/lib/ml-api'
 import type { MapMarker, HazardLayer, RiskLevel } from '@/lib/types'
 
+const LeafletMap = dynamic(
+  () => import('../leaflet-map').then((mod) => mod.LeafletMap),
+  { ssr: false, loading: () => <div className="map-panel" style={{ minHeight: 640, display: 'grid', placeItems: 'center', color: '#6e7b86', fontSize: 13 }}>Loading map…</div> },
+)
+
 const riskLevelOptions = ['All', 'Low', 'Moderate', 'High', 'Very high']
 const hazardTypeOptions = [
   'Landslide',
@@ -28,18 +33,6 @@ const hazardTypeOptions = [
   'Flash Flood',
   'Mountain Hazard',
 ]
-
-const STATE_COORDS: Record<string, { x: number; y: number; state: string }> = {
-  'Meghalaya': { x: 62, y: 48, state: 'Meghalaya' },
-  'Assam': { x: 58, y: 38, state: 'Assam' },
-  'Mizoram': { x: 72, y: 68, state: 'Mizoram' },
-  'Manipur': { x: 74, y: 52, state: 'Manipur' },
-  'Sikkim': { x: 52, y: 32, state: 'Sikkim' },
-  'Arunachal Pradesh': { x: 68, y: 22, state: 'Arunachal Pradesh' },
-  'Nagaland': { x: 78, y: 38, state: 'Nagaland' },
-  'Tripura': { x: 66, y: 62, state: 'Tripura' },
-  'West Bengal': { x: 48, y: 42, state: 'West Bengal' },
-}
 
 export function RiskMapScreen() {
   const [selectedId, setSelectedId] = useState('Meghalaya')
@@ -55,13 +48,12 @@ export function RiskMapScreen() {
       if (data && data.length > 0) {
         setSnapshotData(data)
         const markers: MapMarker[] = data.map((s) => {
-          const coords = STATE_COORDS[s.state] || { x: 50, y: 50, state: s.state }
           const tone = toRiskTone(s.risk_level)
           return {
             id: s.state,
             name: s.state,
-            x: coords.x,
-            y: coords.y,
+            x: 50,
+            y: 50,
             score: probabilityToScore(s.probability),
             level: tone,
             hazard: 'landslide',
@@ -110,7 +102,7 @@ export function RiskMapScreen() {
       />
 
       <div className="full-map-layout">
-        <MapPanel
+        <LeafletMap
           markers={filteredMarkers}
           layers={hazardLayers}
           selectedId={selectedId}
