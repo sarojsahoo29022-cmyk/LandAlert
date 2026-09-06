@@ -1,0 +1,95 @@
+{
+  "scope": "North-East India (Rainfall + Terrain)",
+  "states": [
+    {
+      "state": "Mizoram",
+      "risk": 0.2256,
+      "risk_level": "Low",
+      "peak_month": 9,
+      "events": 17,
+      "avg_elevation_m": 945.0,
+      "avg_slope_deg": 3.2
+    },
+    {
+      "state": "Tripura",
+      "risk": 0.1858,
+      "risk_level": "Low",
+      "peak_month": 8,
+      "events": 2,
+      "avg_elevation_m": 156.0,
+      "avg_slope_deg": NaN
+    },
+    {
+      "state": "Other",
+      "risk": 0.17,
+      "risk_level": "Low",
+      "peak_month": 9,
+      "events": 179,
+      "avg_elevation_m": 860.0,
+      "avg_slope_deg": 2.9
+    },
+    {
+      "state": "Meghalaya",
+      "risk": 0.1666,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 11,
+      "avg_elevation_m": 763.0,
+      "avg_slope_deg": 1.8
+    },
+    {
+      "state": "Sikkim",
+      "risk": 0.1517,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 35,
+      "avg_elevation_m": 1656.0,
+      "avg_slope_deg": 5.5
+    },
+    {
+      "state": "West Bengal",
+      "risk": 0.1368,
+      "risk_level": "Low",
+      "peak_month": 6,
+      "events": 33,
+      "avg_elevation_m": 1352.0,
+      "avg_slope_deg": 5.3
+    },
+    {
+      "state": "Manipur",
+      "risk": 0.1359,
+      "risk_level": "Low",
+      "peak_month": 7,
+      "events": 41,
+      "avg_elevation_m": 1148.0,
+      "avg_slope_deg": 2.6
+    },
+    {
+      "state": "Arunachal Pradesh",
+      "risk": 0.1306,
+      "risk_level": "Low",
+      "peak_month": 4,
+      "events": 34,
+      "avg_elevation_m": 1245.0,
+      "avg_slope_deg": 6.3
+    },
+    {
+      "state": "Assam",
+      "risk": 0.1175,
+      "risk_level": "Low",
+      "peak_month": 5,
+      "events": 40,
+      "avg_elevation_m": 248.0,
+      "avg_slope_deg": 1.0
+    },
+    {
+      "state": "Nagaland",
+      "risk": 0.0356,
+      "risk_level": "Low",
+      "peak_month": 8,
+      "events": 51,
+      "avg_elevation_m": 1228.0,
+      "avg_slope_deg": 2.4
+    }
+  ]
+}
