@@ -5,7 +5,44 @@
 ## SIH PROBLEM: SIH26001
 ## TITLE: AI-Based Early Warning and Landslide Risk Monitoring System in NER
 
-## CURRENT DATE: September 4, 2026
+## CURRENT DATE: September 7, 2026
+
+---
+
+## PROJECT OVERVIEW (For New Members / Team)
+
+### What is the Problem?
+North-Eastern India (Assam, Meghalaya, Sikkim, Mizoram, Manipur, Nagaland, Tripura, Arunachal Pradesh, West Bengal) is highly prone to landslides due to heavy monsoon rainfall, steep terrain, and mountainous geography. Every year, landslides destroy roads, houses, and infrastructure, and sometimes even kill people. Currently, there is no centralized AI-powered system that can predict landslide risk in real-time, show it on a map, and alert authorities before disaster strikes. Disaster response teams have to rely on manual reports and old data, which causes delays and loss of life.
+
+### What Existing Solutions Are There?
+Right now, the Geological Survey of India (GSI) and state disaster management departments use basic historical records and manual inspections. Some researchers have published static susceptibility maps, but these are not interactive, not real-time, and not accessible to field officers. There is no single dashboard that combines machine learning predictions, live rainfall data, terrain analysis, and interactive maps in one place for authorities to use during monsoon season.
+
+### What SIH Expects from Us?
+Smart India Hackathon (SIH26001) wants us to build an AI-Based Early Warning and Landslide Risk Monitoring System for the North-East Region. The expected solution should:
+- Let users search any location and analyze its landslide risk
+- Generate a risk score (Low/Moderate/High/Very High)
+- Explain WHY the risk is high (contributing factors like rainfall, slope, temperature)
+- Visualize risk on an interactive GIS map
+- Track historical trends
+- Show a potential hazard chain (heavy rain → slope instability → landslide → river disruption → downstream flooding)
+- Provide an alert/early warning system for authorities
+- Be practical, explainable, and useful for disaster management decision-making
+
+### What is Our Solution (LandAlert)?
+LandAlert is a full-stack AI-powered early warning platform that does exactly what SIH asks for. We trained a Machine Learning model (HistGradientBoosting Classifier) on 1,773 real landslide records from NASA's Global Landslide Catalog, enriched with IMD rainfall data, NASA temperature data, and SRTM terrain data (elevation + slope). The system has a Next.js frontend with 5 screens, a Python FastAPI backend with 8 API endpoints, and an interactive Leaflet/OpenStreetMap-based risk map. Users can search any NE India district, click "Analyze Risk," and instantly get a risk score, risk level, terrain details (elevation, slope, elevation zone), and contributing factors (rainfall impact, temperature impact, etc.). The system also shows a hazard chain concept explaining how heavy rainfall can lead to slope instability, then landslides, then possible river disruption and downstream flooding.
+
+### Full Functionality of LandAlert
+1. **Dashboard** - Overview of regional risk summary, AI analysis after prediction, quick actions
+2. **Risk Map** - Real Leaflet/OpenStreetMap with 9 state markers, color-coded by risk level (green/yellow/orange/red), clickable markers showing elevation, slope, risk score
+3. **Analytics** - Model performance metrics (Accuracy 76.9%, ROC-AUC 79.2%), historical landslide events table, rainfall-risk relationship
+4. **Alerts** - ML-generated alerts for High/Very High risk areas, filterable by severity, alert count badge in sidebar
+5. **Methodology** - Transparent documentation of the ML pipeline and model features
+6. **Location Search** - 54 searchable districts with autocomplete
+7. **Risk Prediction** - POST /predict endpoint returns risk score, risk level, contributing factors, terrain data
+8. **Hazard Cascade** - Visual 5-step chain: Rainfall → Instability → Landslide → River Disruption → Flooding (marked as conceptual)
+9. **Terrain Analysis** - Real elevation (8m to 4,036m) and slope (0° to 32.4°) from SRTM 90m data
+10. **Historical Data** - Past landslide events for each state from NASA catalog
+11. **Regional Overview** - Monitored locations count, elevated zones, active warnings, hotspot list with severity badges
 
 ---
 
