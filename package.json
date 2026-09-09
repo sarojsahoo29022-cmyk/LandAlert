@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"python -m uvicorn ml_api:app --port 8000 --reload\" \"next dev --webpack\"",
+    "dev:frontend": "next dev --webpack",
+    "dev:backend": "python -m uvicorn ml_api:app --port 8000 --reload",
     "build": "next build",
     "start": "next start"
   },
@@ -29,6 +31,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
     "typescript": "5.7.3"
