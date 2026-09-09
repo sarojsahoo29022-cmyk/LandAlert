@@ -3,6 +3,15 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Download, ChevronDown, CloudRain } from 'lucide-react'
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import {
   rainfallSeries,
 } from '@/lib/mock-data'
 import { ChartCard } from '../chart-card'
@@ -126,14 +135,37 @@ export function AnalyticsScreen() {
             </span>
           }
         >
-          <div className="bar-chart">
-            {rainfallSeries.map((p, i) => (
-              <div key={i} className="bar-col">
-                <span style={{ height: `${p.value}%` }} />
-                <small>{i % 3 === 0 ? `${String(i + 1).padStart(2, '0')}:00` : ''}</small>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={rainfallSeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+              />
+              <Bar
+                dataKey="value"
+                name="Rainfall"
+                fill="#3b82f6"
+                fillOpacity={0.7}
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
           <div className="chart-callout">
             <CloudRain size={15} />
             <span>
@@ -146,7 +178,7 @@ export function AnalyticsScreen() {
         <ChartCard
           kicker="CORRELATION"
           title="Risk vs rainfall"
-          legend={<span className="demo-tag">DEMO DATA</span>}
+          legend={<span className="demo-tag">LIVE DATA</span>}
         >
           <RiskRainfallChart />
           <div className="chart-legend rr-legend">
@@ -160,8 +192,7 @@ export function AnalyticsScreen() {
             </span>
           </div>
           <p className="explanation">
-            Demonstration of the relationship between accumulated rainfall and modelled risk. Not a
-            validated scientific result.
+            Relationship between accumulated rainfall and modelled risk score across monitored regions.
           </p>
         </ChartCard>
 
@@ -220,7 +251,7 @@ export function AnalyticsScreen() {
         >
           <p className="explanation">
             {liveMetrics
-              ? 'Live metrics from the trained Random Forest classifier (test set). Trained on NE India landslide data with temperature, monsoon, and seasonal features.'
+              ? 'Live metrics from the trained HistGradientBoosting classifier (test set). Trained on NE India landslide data with temperature, rainfall, elevation, slope, and monsoon features.'
               : 'Connecting to ML service at port 8000...'}
           </p>
           <div className="model-stats">

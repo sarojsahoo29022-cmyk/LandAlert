@@ -12,7 +12,7 @@ import {
 import { LocationSearch } from '../location-search'
 import { RegionalOverview } from '../regional-overview'
 import { RiskCard } from '../risk-card'
-import { MapPanel } from '../map-panel'
+import { LeafletMap } from '../leaflet-map'
 import { LocationDetails } from '../location-details'
 import { RiskFactorBar } from '../risk-factor-bar'
 import { RiskTrendChart } from '../risk-trend-chart'
@@ -257,7 +257,7 @@ export function DashboardScreen({ setActive }: { setActive: (label: string) => v
               Open full map <MoveUpRight size={15} />
             </button>
           </div>
-          <MapPanel markers={mapMarkers} layers={hazardLayers} />
+          <LeafletMap markers={mapMarkers} layers={hazardLayers} compact />
         </section>
 
         <LocationDetails location={currentLocation} />

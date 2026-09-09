@@ -1,0 +1,46 @@
+declare module 'lucide-react' {
+  import type { ComponentType, SVGProps } from 'react'
+  export const Activity: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const AlertCircle: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const AlertTriangle: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ArrowRight: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const BarChart3: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Bell: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ChevronDown: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ChevronRight: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const CloudRain: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Crosshair: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Download: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Eye: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const FileText: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Filter: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Info: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Layers3: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const MapPin: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Mountain: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const MoveUpRight: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Search: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Shield: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Signal: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const SlidersHorizontal: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Sparkles: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Thermometer: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const TrendingUp: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const X: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Zap: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ZoomIn: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ZoomOut: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const CheckCircle2: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Clock: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const AlertOctagon: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const RefreshCw: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Map: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Loader2: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Navigation: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Waves: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Compass: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Menu: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Settings2: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const Database: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+  export const ShieldCheck: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+}
