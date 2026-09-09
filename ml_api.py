@@ -8,6 +8,11 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
+from twilio.rest import Client as TwilioClient
+from dotenv import load_dotenv
+
+load_dotenv()
+load_dotenv(".env.local")
 
 app = FastAPI(title="GeoShield ML API", version="3.0.0")
 
@@ -25,6 +30,16 @@ META_PATH = os.path.join(BASE_DIR, "ml_model", "model_meta.json")
 DATA_PATH = os.path.join(BASE_DIR, "datasets", "ne_india_landslide_enriched.csv")
 RAINFALL_CSV = os.path.join(BASE_DIR, "Rainfall_Data_LL.csv")
 TERRAIN_CSV = os.path.join(BASE_DIR, "datasets", "ne_terrain_lookup.csv")
+
+# Twilio Configuration
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+
+# Initialize Twilio client
+twilio_client = None
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+    twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 model_raw = None
 pipeline = None
@@ -190,6 +205,44 @@ def _get_rainfall_for_state_month(state: str, month: int) -> float:
     return 0.0
 
 
+def send_sms(to_number: str, message: str) -> dict:
+    """Send SMS via Twilio."""
+    if not twilio_client:
+        return {"success": False, "error": "Twilio client not configured"}
+    
+    try:
+        sms = twilio_client.messages.create(
+            body=message,
+            from_=TWILIO_PHONE_NUMBER,
+            to=to_number
+        )
+        return {"success": True, "sid": sms.sid, "status": sms.status}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def send_alert_sms(alerts: list, to_number: str) -> list:
+    """Send SMS alerts for High and Very High risk states."""
+    results = []
+    for alert in alerts:
+        if alert.get("risk_level") in ["High", "Very High"]:
+            message = (
+                f"LandAlert: {alert['risk_level'].upper()} landslide risk in {alert['state']} "
+                f"({alert['probability']*100:.0f}% probability). "
+                f"Rainfall: {alert.get('rainfall_mm', 0):.0f}mm, "
+                f"Elevation: {alert.get('elevation_m', 0):.0f}m, "
+                f"Slope: {alert.get('slope_deg', 0):.1f}°. "
+                f"Monitor conditions closely."
+            )
+            result = send_sms(to_number, message)
+            results.append({
+                "state": alert["state"],
+                "risk_level": alert["risk_level"],
+                "sms_result": result
+            })
+    return results
+
+
 @app.on_event("startup")
 async def startup():
     load_model()
@@ -205,6 +258,11 @@ class PredictRequest(BaseModel):
     rainfall_mm: Optional[float] = None
     elevation_m: Optional[float] = None
     slope_deg: Optional[float] = None
+
+
+class SendSmsRequest(BaseModel):
+    phone_number: str = Field(..., pattern=r"^\+[1-9]\d{1,14}$")
+    send_to_all: bool = False
 
 
 def get_risk_level(prob: float) -> str:
@@ -498,6 +556,34 @@ async def alerts():
             })
             alert_id += 1
     return {"alerts": alerts_list, "total": len(alerts_list)}
+
+
+@app.post("/send-sms")
+async def send_sms_alert(req: SendSmsRequest):
+    """Send SMS alerts for High and Very High risk states."""
+    load_model()
+    snapshot_data = await snapshot()
+    
+    alerts_to_send = []
+    for st in snapshot_data["states"]:
+        if st["risk_level"] in ["High", "Very High"]:
+            alerts_to_send.append(st)
+    
+    if not alerts_to_send:
+        return {"message": "No high-risk alerts to send", "results": []}
+    
+    results = send_alert_sms(alerts_to_send, req.phone_number)
+    return {"message": f"SMS sent for {len(results)} alerts", "results": results}
+
+
+@app.get("/sms-status")
+async def sms_status():
+    """Check Twilio SMS configuration status."""
+    return {
+        "configured": twilio_client is not None,
+        "phone_number": TWILIO_PHONE_NUMBER if TWILIO_PHONE_NUMBER else "Not set",
+        "account_sid": TWILIO_ACCOUNT_SID[:8] + "..." if TWILIO_ACCOUNT_SID else "Not set"
+    }
 
 
 STATE_COORDS = {

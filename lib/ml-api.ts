@@ -124,6 +124,34 @@ export async function fetchAlerts(): Promise<AlertItem[] | null> {
   return data?.alerts ?? null
 }
 
+export interface SmsResult {
+  state: string
+  risk_level: string
+  sms_result: {
+    success: boolean
+    sid?: string
+    status?: string
+    error?: string
+  }
+}
+
+export async function sendAlertSms(
+  phoneNumber: string,
+): Promise<{ message: string; results: SmsResult[] } | null> {
+  return getJson<{ message: string; results: SmsResult[] }>('/send-sms', {
+    method: 'POST',
+    body: JSON.stringify({ phone_number: phoneNumber }),
+  })
+}
+
+export async function fetchSmsStatus(): Promise<{
+  configured: boolean
+  phone_number: string
+  account_sid: string
+} | null> {
+  return getJson<{ configured: boolean; phone_number: string; account_sid: string }>('/sms-status')
+}
+
 export async function fetchRiskSummary(): Promise<{
   low: number
   moderate: number

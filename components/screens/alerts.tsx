@@ -7,6 +7,7 @@ import { StatCard } from '../stat-card'
 import { AlertCard } from '../alert-card'
 import { StatusBadge } from '../status-badge'
 import { FilterControls } from '../filter-controls'
+import { SubscribeForm } from '../subscribe-form'
 import { fetchAlerts, fetchSnapshot, toRiskTone, type AlertItem, type SnapshotState } from '@/lib/ml-api'
 import type { Alert, AlertStatus } from '@/lib/types'
 
@@ -84,40 +85,48 @@ export function AlertsScreen() {
         ]}
       />
 
-      <section className="panel all-alerts-panel">
-        <div className="panel-heading">
-          <div>
-            <span className="section-kicker">ALERT REGISTER</span>
-            <h2>
-              {status === 'All' ? 'All alerts' : status}
-            </h2>
-          </div>
-          <span className="muted-label">{filtered.length} records</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+        <div className="md:col-span-2">
+          <section className="panel all-alerts-panel h-full">
+            <div className="panel-heading">
+              <div>
+                <span className="section-kicker">ALERT REGISTER</span>
+                <h2>
+                  {status === 'All' ? 'All alerts' : status}
+                </h2>
+              </div>
+              <span className="muted-label">{filtered.length} records</span>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="empty-state">
+                <Bell size={22} />
+                <p>No alerts match the current filters.</p>
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    setStatus('All')
+                    setSeverity('All')
+                  }}
+                  type="button"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="alert-list">
+                {filtered.map((a) => (
+                  <AlertCard key={a.id} alert={a} expanded onSelect={setSelectedId} />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="empty-state">
-            <Bell size={22} />
-            <p>No alerts match the current filters.</p>
-            <button
-              className="text-button"
-              onClick={() => {
-                setStatus('All')
-                setSeverity('All')
-              }}
-              type="button"
-            >
-              Clear filters
-            </button>
-          </div>
-        ) : (
-          <div className="alert-list">
-            {filtered.map((a) => (
-              <AlertCard key={a.id} alert={a} expanded onSelect={setSelectedId} />
-            ))}
-          </div>
-        )}
-      </section>
+        <div>
+          <SubscribeForm />
+        </div>
+      </div>
 
       {selected && (
         <section className="panel alert-detail">
