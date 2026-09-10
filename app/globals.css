@@ -253,3 +253,68 @@ button { cursor: pointer; }
   border-top-color: rgba(22,58,80,0.92);
 }
 
+/* Feature Importance Chart */
+.feature-importance-chart {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.feature-importance-chart .chart-header {
+  margin-bottom: 12px;
+}
+
+.feature-importance-chart .chart-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 4px 0 2px;
+}
+
+.feature-importance-chart .chart-subtitle {
+  font-size: 11px;
+  color: var(--slate);
+  margin: 0;
+}
+
+.feature-importance-chart .chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--slate);
+  font-size: 13px;
+}
+
+.feature-importance-chart .importance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.feature-importance-chart .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.feature-importance-chart .legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.feature-importance-chart .legend-label {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.feature-importance-chart .legend-value {
+  color: var(--slate);
+  font-family: monospace;
+}
+

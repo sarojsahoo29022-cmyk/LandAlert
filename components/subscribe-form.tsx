@@ -45,9 +45,16 @@ export function SubscribeForm({ onSent }: SubscribeFormProps) {
           setPhoneNumber('')
           onSent?.()
         } else {
+          const rawErr = response.results[0]?.sms_result.error || ''
+          const isTrialErr = rawErr.includes('verified recipient') || rawErr.includes('422')
+          const isTemplateErr = rawErr.includes('predefined SMS templates') || rawErr.includes('template name')
           setResult({
             success: false,
-            message: response.results[0]?.sms_result.error || 'Failed to send SMS'
+            message: isTrialErr
+              ? 'Twilio Trial restriction: Number must be added to Verified Caller IDs in Twilio Console (console.twilio.com)'
+              : isTemplateErr
+              ? 'Twilio India Trial regulation: International SMS to Indian numbers requires upgrading Twilio account or using Twilio WhatsApp sandbox.'
+              : rawErr || 'Failed to send SMS'
           })
         }
       } else {

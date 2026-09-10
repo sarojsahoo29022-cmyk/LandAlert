@@ -7,6 +7,8 @@ import json
 import numpy as np
 import pandas as pd
 import os
+import math
+import httpx
 from datetime import datetime
 from twilio.rest import Client as TwilioClient
 from dotenv import load_dotenv
@@ -14,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv(".env.local")
 
-app = FastAPI(title="GeoShield ML API", version="3.0.0")
+app = FastAPI(title="LandAlert ML API", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -243,6 +245,285 @@ def send_alert_sms(alerts: list, to_number: str) -> list:
     return results
 
 
+# ============================================================
+# LIVE DATA SERVICES (Open-Meteo - Free, no API key required)
+# ============================================================
+
+GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
+WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+ELEVATION_URL = "https://api.open-meteo.com/v1/elevation"
+HTTP_TIMEOUT = 10.0
+
+
+async def geocode_location(query: str) -> dict:
+    """Convert location name to lat/lon using Open-Meteo Geocoding API."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(GEOCODING_URL, params={
+                "name": query,
+                "count": 5,
+                "language": "en",
+                "format": "json",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            results = data.get("results", [])
+            if not results:
+                return {"success": False, "error": "Location not found"}
+            best = results[0]
+            return {
+                "success": True,
+                "latitude": best["latitude"],
+                "longitude": best["longitude"],
+                "name": best.get("name", query),
+                "admin1": best.get("admin1", ""),
+                "country": best.get("country", "India"),
+                "elevation": best.get("elevation", None),
+                "timezone": best.get("timezone", "Asia/Kolkata"),
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def fetch_live_weather(lat: float, lon: float) -> dict:
+    """Fetch current weather from Open-Meteo API."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(WEATHER_URL, params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": ",".join([
+                    "temperature_2m",
+                    "relative_humidity_2m",
+                    "precipitation",
+                    "rain",
+                    "wind_speed_10m",
+                    "pressure_msl",
+                ]),
+                "timezone": "Asia/Kolkata",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            current = data.get("current", {})
+            return {
+                "success": True,
+                "temperature_2m": current.get("temperature_2m", None),
+                "relative_humidity_2m": current.get("relative_humidity_2m", None),
+                "precipitation_mm": current.get("precipitation", None),
+                "rain_mm": current.get("rain", None),
+                "wind_speed_kmh": current.get("wind_speed_10m", None),
+                "pressure_hpa": current.get("pressure_msl", None),
+                "time": current.get("time", None),
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def fetch_forecast_rainfall(lat: float, lon: float, days: int = 3) -> dict:
+    """Fetch recent + forecast rainfall from Open-Meteo."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(WEATHER_URL, params={
+                "latitude": lat,
+                "longitude": lon,
+                "daily": "precipitation_sum",
+                "past_days": days,
+                "forecast_days": 1,
+                "timezone": "Asia/Kolkata",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            daily = data.get("daily", {})
+            precip_values = daily.get("precipitation_sum", [])
+            precip_values = [v for v in precip_values if v is not None]
+            if not precip_values:
+                return {"success": True, "total_mm": 0.0, "daily": [], "source": "open-meteo"}
+            total = sum(precip_values)
+            return {
+                "success": True,
+                "total_mm": round(total, 1),
+                "daily": precip_values,
+                "source": "open-meteo",
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def fetch_elevation(lat: float, lon: float) -> dict:
+    """Fetch elevation from Open-Meteo DEM API."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(ELEVATION_URL, params={
+                "latitude": lat,
+                "longitude": lon,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            elevations = data.get("elevation", [])
+            elev = elevations[0] if elevations else None
+            return {
+                "success": elev is not None,
+                "elevation_m": elev,
+                "source": "open-meteo-dem",
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def fetch_elevation_grid(lat: float, lon: float, grid_size: int = 3, spacing: float = 0.003) -> dict:
+    """Fetch elevation grid around a point for slope calculation.
+    spacing ~0.003 degrees ~ 300m for local slope estimation."""
+    try:
+        lats = []
+        lons = []
+        half = grid_size // 2
+        for i in range(grid_size):
+            for j in range(grid_size):
+                lats.append(round(lat + (i - half) * spacing, 6))
+                lons.append(round(lon + (j - half) * spacing, 6))
+
+        lat_str = ",".join(str(v) for v in lats)
+        lon_str = ",".join(str(v) for v in lons)
+
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(ELEVATION_URL, params={
+                "latitude": lat_str,
+                "longitude": lon_str,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            elevations = data.get("elevation", [])
+
+            if len(elevations) != grid_size * grid_size:
+                return {"success": False, "error": "Incomplete elevation grid"}
+
+            grid = []
+            idx = 0
+            for i in range(grid_size):
+                row = []
+                for j in range(grid_size):
+                    row.append(elevations[idx])
+                    idx += 1
+                grid.append(row)
+
+            center = grid[half][half]
+            slope_deg = _compute_slope_from_grid(grid, spacing)
+
+            return {
+                "success": True,
+                "elevation_m": center,
+                "slope_deg": round(slope_deg, 2),
+                "source": "open-meteo-dem",
+                "grid_size": grid_size,
+                "spacing_deg": spacing,
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _compute_slope_from_grid(grid: list, spacing_deg: float) -> float:
+    """Compute slope in degrees from an elevation grid using central differences.
+    
+    Uses the 3x3 elevation grid to compute partial derivatives:
+      dz/dx = (E[right] - E[left]) / (2 * dx_meters)
+      dz/dy = (E[bottom] - E[top]) / (2 * dy_meters)
+    slope = atan(sqrt(dz_dx^2 + dz_dy^2))
+    """
+    size = len(grid)
+    half = size // 2
+
+    # Convert spacing in degrees to approximate meters
+    lat_m = 111320.0  # meters per degree latitude
+    lon_m = 111320.0 * math.cos(math.radians(grid[half][half]))  # adjusted for latitude
+    dx = spacing_deg * lon_m
+    dy = spacing_deg * lat_m
+
+    # Central differences
+    dz_dx = (grid[half][half + 1] - grid[half][half - 1]) / (2 * dx) if half + 1 < size and half - 1 >= 0 else 0
+    dz_dy = (grid[half + 1][half] - grid[half - 1][half]) / (2 * dy) if half + 1 < size and half - 1 >= 0 else 0
+
+    slope_rad = math.atan(math.sqrt(dz_dx ** 2 + dz_dy ** 2))
+    return math.degrees(slope_rad)
+
+
+async def reverse_geocode_state(lat: float, lon: float) -> str:
+    """Determine NE India state from coordinates using nearest-district heuristic."""
+    best_state = "Assam"
+    min_dist = float("inf")
+    for name, info in STATE_COORDS.items():
+        dist = ((lat - info["lat"]) ** 2 + (lon - info["lon"]) ** 2) ** 0.5
+        if dist < min_dist:
+            min_dist = dist
+            best_state = info["state"]
+    return best_state
+
+
+async def fetch_live_data_bundle(lat: float, lon: float) -> dict:
+    """Fetch all live data for a location in parallel.
+    Returns weather, terrain, and slope data."""
+    import asyncio
+
+    weather_task = fetch_live_weather(lat, lon)
+    forecast_task = fetch_forecast_rainfall(lat, lon, days=3)
+    grid_task = fetch_elevation_grid(lat, lon, grid_size=3, spacing=0.003)
+
+    results = await asyncio.gather(
+        weather_task, forecast_task, grid_task, return_exceptions=True
+    )
+
+    weather = results[0] if isinstance(results[0], dict) else {"success": False, "error": str(results[0])}
+    forecast = results[1] if isinstance(results[1], dict) else {"success": False, "error": str(results[1])}
+    terrain = results[2] if isinstance(results[2], dict) else {"success": False, "error": str(results[2])}
+
+    # Assemble live values
+    temp = weather.get("temperature_2m") if weather.get("success") else None
+    rainfall = forecast.get("total_mm", 0.0) if forecast.get("success") else None
+    elevation_m = terrain.get("elevation_m") if terrain.get("success") else None
+    slope_deg = terrain.get("slope_deg") if terrain.get("success") else None
+
+    data_status = {
+        "weather": "LIVE" if weather.get("success") else "FALLBACK",
+        "rainfall": "LIVE" if forecast.get("success") else "FALLBACK",
+        "terrain": "LIVE" if terrain.get("success") else "FALLBACK",
+        "overall": "LIVE" if all([weather.get("success"), forecast.get("success"), terrain.get("success")]) else "PARTIAL",
+    }
+
+    return {
+        "temp_2m": temp,
+        "rainfall_mm": rainfall,
+        "elevation_m": elevation_m,
+        "slope_deg": slope_deg,
+        "weather_raw": weather,
+        "forecast_raw": forecast,
+        "terrain_raw": terrain,
+        "data_status": data_status,
+    }
+
+
+PREDICTION_HISTORY_PATH = os.path.join(BASE_DIR, "datasets", "prediction_history.json")
+
+
+def _load_prediction_history() -> list:
+    if os.path.exists(PREDICTION_HISTORY_PATH):
+        try:
+            with open(PREDICTION_HISTORY_PATH) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def _save_prediction(entry: dict):
+    history = _load_prediction_history()
+    history.append(entry)
+    # Keep last 500 predictions
+    if len(history) > 500:
+        history = history[-500:]
+    os.makedirs(os.path.dirname(PREDICTION_HISTORY_PATH), exist_ok=True)
+    with open(PREDICTION_HISTORY_PATH, "w") as f:
+        json.dump(history, f, indent=2)
+
+
 @app.on_event("startup")
 async def startup():
     load_model()
@@ -263,6 +544,12 @@ class PredictRequest(BaseModel):
 class SendSmsRequest(BaseModel):
     phone_number: str = Field(..., pattern=r"^\+[1-9]\d{1,14}$")
     send_to_all: bool = False
+
+
+class PredictLiveRequest(BaseModel):
+    location: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 def get_risk_level(prob: float) -> str:
@@ -359,6 +646,49 @@ async def health():
     }
 
 
+@app.get("/feature-importance")
+async def feature_importance():
+    """Return model feature importance (permutation importance) for explainability."""
+    load_model()
+    
+    perm_importance = meta.get("feature_importances", {}) if meta else {}
+    native_importance = meta.get("native_feature_importances", {}) if meta else {}
+    
+    # Build ranked list sorted by absolute importance
+    features = []
+    for fname, score in perm_importance.items():
+        if fname.startswith("state_"):
+            continue  # Skip one-hot encoded state features
+        features.append({
+            "feature": fname,
+            "importance": round(score, 4),
+            "abs_importance": round(abs(score), 4),
+            "direction": "positive" if score > 0 else "negative" if score < 0 else "neutral",
+        })
+    
+    features.sort(key=lambda x: x["abs_importance"], reverse=True)
+    
+    # Add rank
+    for i, f in enumerate(features):
+        f["rank"] = i + 1
+    
+    # Compute normalized weights (0-100 scale)
+    max_imp = max((f["abs_importance"] for f in features), default=1)
+    if max_imp > 0:
+        for f in features:
+            f["weight_pct"] = round((f["abs_importance"] / max_imp) * 100, 1)
+    else:
+        for f in features:
+            f["weight_pct"] = 0
+    
+    return {
+        "features": features,
+        "model_version": meta.get("model_version", "unknown") if meta else "unknown",
+        "total_features": len(features),
+        "method": "permutation_importance",
+    }
+
+
 @app.get("/districts")
 async def districts():
     district_list = [
@@ -437,6 +767,277 @@ async def predict(req: PredictRequest):
             "elevation_zone": elev_zone,
             "slope_category": slope_category,
         },
+    }
+
+
+@app.post("/predict-explain")
+async def predict_explain(req: PredictRequest):
+    """Predict and return per-prediction feature contribution analysis.
+    
+    Uses feature deviation from training means to estimate each factor's
+    contribution to the risk score (SHAP-like approximation).
+    """
+    load_model()
+    
+    state = req.state.strip()
+    month = req.month
+    year = req.year
+
+    temp = req.temp_2m if req.temp_2m is not None else get_temp_for_month_state(state, month)
+    rainfall = req.rainfall_mm if req.rainfall_mm is not None else get_rainfall(state, year, month)
+
+    lat = req.latitude
+    lon = req.longitude
+    if lat is None or lon is None:
+        coords = STATE_AVG_COORDS.get(state, {"lat": 26.0, "lon": 92.0})
+        lat = coords["lat"]
+        lon = coords["lon"]
+
+    elevation_m = req.elevation_m
+    slope_deg = req.slope_deg
+    if elevation_m is None or slope_deg is None:
+        terrain = _get_terrain_for_coords(lat, lon)
+        if elevation_m is None:
+            elevation_m = terrain.get("elevation_m", 500.0)
+        if slope_deg is None:
+            slope_deg = terrain.get("slope_deg", 20.0)
+
+    prob, prediction, risk_level, elev, slope = _predict_features(
+        state, month, year, temp, rainfall, lat, lon, elevation_m, slope_deg
+    )
+
+    # Compute training set means for deviation analysis
+    train_means = {}
+    train_stds = {}
+    if training_data is not None:
+        numeric_cols = ["latitude", "longitude", "month", "temp_2m", "rainfall_mm", "elevation_m", "slope_deg"]
+        for col in numeric_cols:
+            if col in training_data.columns:
+                vals = training_data[col].dropna()
+                train_means[col] = float(vals.mean())
+                train_stds[col] = float(vals.std()) if vals.std() > 0 else 1.0
+
+    # Feature values for this prediction
+    pred_values = {
+        "latitude": lat,
+        "longitude": lon,
+        "month": month,
+        "temp_2m": temp,
+        "rainfall_mm": rainfall,
+        "elevation_m": elev,
+        "slope_deg": slope,
+    }
+
+    # Compute deviations and estimated contributions
+    perm_imp = meta.get("feature_importances", {}) if meta else {}
+    contributions = []
+    
+    for fname, imp_score in perm_imp.items():
+        if fname.startswith("state_") or fname == "is_monsoon":
+            continue
+        
+        val = pred_values.get(fname, 0)
+        mean = train_means.get(fname, val)
+        std = train_stds.get(fname, 1.0)
+        deviation = (val - mean) / std  # z-score
+        
+        # Contribution = importance * deviation direction
+        contribution = imp_score * deviation
+        
+        contributions.append({
+            "feature": fname,
+            "value": round(val, 2),
+            "training_mean": round(mean, 2),
+            "deviation_zscore": round(deviation, 2),
+            "importance": round(imp_score, 4),
+            "contribution": round(contribution, 4),
+            "direction": "increases_risk" if contribution > 0 else "decreases_risk" if contribution < 0 else "neutral",
+            "impact_level": "HIGH" if abs(contribution) > 0.01 else "MEDIUM" if abs(contribution) > 0.005 else "LOW",
+        })
+
+    contributions.sort(key=lambda x: abs(x["contribution"]), reverse=True)
+
+    # Build explanation text
+    top_factors = [c for c in contributions if c["direction"] == "increases_risk"][:3]
+    decrease_factors = [c for c in contributions if c["direction"] == "decreases_risk"][:2]
+
+    explanation_parts = [f"ML model predicts {risk_level} risk ({prob*100:.0f}%) for {state}."]
+    
+    if top_factors:
+        inc_names = [f["feature"].replace("_mm", "").replace("_m", "").replace("_deg", "").replace("_2m", "") for f in top_factors]
+        explanation_parts.append(f"Primary risk drivers: {', '.join(inc_names)}.")
+    
+    if decrease_factors:
+        dec_names = [f["feature"].replace("_mm", "").replace("_m", "").replace("_deg", "").replace("_2m", "") for f in decrease_factors]
+        explanation_parts.append(f"Factors reducing risk: {', '.join(dec_names)}.")
+
+    return {
+        "risk_level": risk_level,
+        "probability": round(prob, 4),
+        "contributions": contributions,
+        "explanation": " ".join(explanation_parts),
+        "top_risk_drivers": [c["feature"] for c in contributions if c["direction"] == "increases_risk"][:3],
+        "top_risk_reducers": [c["feature"] for c in contributions if c["direction"] == "decreases_risk"][:2],
+    }
+
+
+@app.get("/geocode")
+async def geocode(q: str = ""):
+    """Geocode a location name to coordinates using Open-Meteo."""
+    if not q.strip():
+        return {"success": False, "error": "Query is empty"}
+    result = await geocode_location(q.strip())
+    return result
+
+
+@app.post("/predict-live")
+async def predict_live(req: PredictLiveRequest):
+    """Full live prediction: geocode -> weather -> terrain -> slope -> ML model.
+    
+    This is the main endpoint for the live data flow.
+    Input: location name or coordinates.
+    Output: risk prediction with live environmental data.
+    """
+    load_model()
+
+    # Step 1: Resolve coordinates
+    lat = req.latitude
+    lon = req.longitude
+    location_name = req.location.strip()
+
+    if lat is None or lon is None:
+        geo = await geocode_location(location_name)
+        if not geo.get("success"):
+            return {
+                "success": False,
+                "error": f"Could not geocode location: {location_name}",
+                "data_status": {"overall": "FAILED"},
+            }
+        lat = geo["latitude"]
+        lon = geo["longitude"]
+        if not location_name or location_name == "":
+            location_name = geo.get("name", "Unknown")
+        location_name = f"{location_name}, {geo.get('admin1', '')}, {geo.get('country', '')}".strip(", ")
+
+    # Step 2: Determine state from coordinates
+    state = await reverse_geocode_state(lat, lon)
+
+    # Step 3: Fetch live environmental data
+    live = await fetch_live_data_bundle(lat, lon)
+
+    # Step 4: Resolve feature values (live -> fallback to historical)
+    now = datetime.now()
+    month = now.month
+    year = now.year
+    is_monsoon = 1 if month in [5, 6, 7, 8, 9] else 0
+
+    temp = live["temp_2m"] if live["temp_2m"] is not None else get_temp_for_month_state(state, month)
+    rainfall = live["rainfall_mm"] if live["rainfall_mm"] is not None else get_rainfall(state, year, month)
+    elevation_m = live["elevation_m"] if live["elevation_m"] is not None else 500.0
+    slope_deg = live["slope_deg"] if live["slope_deg"] is not None else 20.0
+
+    # Safety defaults
+    if temp is None or (isinstance(temp, float) and math.isnan(temp)):
+        temp = 21.0
+    if rainfall is None or (isinstance(rainfall, float) and math.isnan(rainfall)):
+        rainfall = 0.0
+    if elevation_m is None or (isinstance(elevation_m, float) and math.isnan(elevation_m)):
+        elevation_m = 500.0
+    if slope_deg is None or (isinstance(slope_deg, float) and math.isnan(slope_deg)):
+        slope_deg = 20.0
+
+    # Step 5: ML prediction
+    prob, prediction, risk_level, elev, slope = _predict_features(
+        state, month, year, temp, rainfall, lat, lon, elevation_m, slope_deg
+    )
+
+    # Step 6: Classify terrain
+    slope_category = "FLAT" if slope < 5 else ("MODERATE" if slope < 20 else ("STEEP" if slope < 35 else "VERY STEEP"))
+    elev_zone = "LOWLAND" if elev < 300 else ("HILLS" if elev < 1000 else ("MOUNTAIN" if elev < 3000 else "HIGH MOUNTAIN"))
+
+    # Step 7: Build factors
+    factors = {
+        "rainfall_mm": f"{rainfall:.0f} mm",
+        "rainfall_intensity": "HEAVY" if rainfall > 300 else ("MODERATE" if rainfall > 100 else "LOW"),
+        "temperature": f"{temp:.1f} C",
+        "temperature_status": "ELEVATED" if temp > 22 else ("MODERATE" if temp > 15 else "LOW"),
+        "monsoon": "ACTIVE" if is_monsoon else "INACTIVE",
+        "elevation": f"{elev:.0f} m ({elev_zone})",
+        "slope": f"{slope:.1f} degrees ({slope_category})",
+        "location": f"{lat:.4f}, {lon:.4f}",
+        "historical_susceptibility": risk_level.upper(),
+    }
+
+    # Step 8: Explanation
+    explanation = (
+        f"LandAlert analysis for {location_name} ({state}). "
+        f"ML model predicts {risk_level} risk ({prob*100:.0f}% probability) "
+        f"in {now.strftime('%B %Y')}. "
+        f"Live rainfall: {rainfall:.0f} mm ({'heavy' if rainfall > 300 else 'moderate' if rainfall > 100 else 'low'}). "
+        f"Temperature: {temp:.1f} C. "
+        f"Elevation: {elev:.0f} m ({elev_zone}). Slope: {slope:.1f} deg ({slope_category}). "
+        f"{'Monsoon active.' if is_monsoon else 'Non-monsoon period.'}"
+    )
+
+    # Save to prediction history
+    try:
+        _save_prediction({
+            "location": location_name,
+            "state": state,
+            "latitude": round(lat, 4),
+            "longitude": round(lon, 4),
+            "risk_level": risk_level,
+            "probability": round(prob, 4),
+            "rainfall_mm": round(rainfall, 1),
+            "temperature_c": round(temp, 1),
+            "elevation_m": round(elev, 1),
+            "slope_deg": round(slope, 2),
+            "data_status": live["data_status"]["overall"],
+            "timestamp": now.isoformat(),
+        })
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "location": location_name,
+        "state": state,
+        "latitude": round(lat, 4),
+        "longitude": round(lon, 4),
+        "landslide_probability": round(prob, 4),
+        "risk_level": risk_level,
+        "prediction": prediction,
+        "factors": factors,
+        "explanation": explanation,
+        "terrain": {
+            "elevation_m": round(elev, 1),
+            "slope_deg": round(slope, 2),
+            "elevation_zone": elev_zone,
+            "slope_category": slope_category,
+        },
+        "live_data": {
+            "weather": {
+                "temperature_c": round(temp, 1),
+                "humidity_pct": live["weather_raw"].get("relative_humidity_2m"),
+                "wind_speed_kmh": live["weather_raw"].get("wind_speed_kmh"),
+                "pressure_hpa": live["weather_raw"].get("pressure_hpa"),
+                "precipitation_mm": live["weather_raw"].get("precipitation_mm"),
+            },
+            "rainfall_forecast": {
+                "recent_days_mm": live["forecast_raw"].get("total_mm", 0),
+                "daily_breakdown": live["forecast_raw"].get("daily", []),
+            },
+            "terrain": {
+                "elevation_m": round(elev, 1),
+                "slope_deg": round(slope, 2),
+                "elevation_zone": elev_zone,
+                "slope_category": slope_category,
+            },
+        },
+        "data_status": live["data_status"],
+        "timestamp": now.isoformat(),
+        "month": month,
+        "year": year,
     }
 
 
@@ -560,20 +1161,38 @@ async def alerts():
 
 @app.post("/send-sms")
 async def send_sms_alert(req: SendSmsRequest):
-    """Send SMS alerts for High and Very High risk states."""
+    """Send SMS alerts to monitoring numbers."""
     load_model()
     snapshot_data = await snapshot()
     
-    alerts_to_send = []
-    for st in snapshot_data["states"]:
-        if st["risk_level"] in ["High", "Very High"]:
-            alerts_to_send.append(st)
+    recipients = ["+918926071764", "+919078461972"]
+    if req.phone_number and req.phone_number not in recipients:
+        recipients.append(req.phone_number)
+
+    results = []
+    states_to_send = [st for st in snapshot_data["states"] if st["risk_level"] in ["High", "Very High", "Moderate"]]
+    if not states_to_send and snapshot_data["states"]:
+        states_to_send = snapshot_data["states"][:2]
     
-    if not alerts_to_send:
-        return {"message": "No high-risk alerts to send", "results": []}
+    for st in states_to_send:
+        message = (
+            f"LandAlert Monitor: {st['risk_level'].upper()} landslide risk in {st['state']}. "
+            f"Risk: {st['probability']*100:.0f}%. "
+            f"Rainfall: {st.get('rainfall_mm', 0):.0f}mm. "
+            f"Elevation: {st.get('elevation_m', 0):.0f}m. "
+            f"Slope: {st.get('slope_deg', 0):.1f}deg. "
+            f"Please monitor this region."
+        )
+        for recipient in recipients:
+            result = send_sms(recipient, message)
+            results.append({
+                "state": st["state"],
+                "risk_level": st["risk_level"],
+                "sent_to": recipient,
+                "sms_result": result,
+            })
     
-    results = send_alert_sms(alerts_to_send, req.phone_number)
-    return {"message": f"SMS sent for {len(results)} alerts", "results": results}
+    return {"message": f"SMS attempted for {len(results)} alert(s)", "results": results}
 
 
 @app.get("/sms-status")

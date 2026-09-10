@@ -88,6 +88,8 @@ export interface SelectedLocation {
   rainfall: string
   slope: string
   elevation: string
+  temperature?: string
+  humidity?: string
   historicalSusceptibility: RiskLevel
   trend: string
   trendDelta: string

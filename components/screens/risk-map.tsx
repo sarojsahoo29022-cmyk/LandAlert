@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Filter as FilterIcon, Layers3, ChevronDown, CloudRain, Mountain, Compass } from 'lucide-react'
+import { Filter as FilterIcon, Layers3, ChevronDown } from 'lucide-react'
 import {
   hazardLayers,
   riskRainfallSeries,
@@ -10,15 +10,13 @@ import {
 import { RiskScoreIndicator } from '../risk-score-indicator'
 import { StatusBadge } from '../status-badge'
 import { FilterControls } from '../filter-controls'
-import { RiskTrendChart } from '../risk-trend-chart'
 import {
   fetchSnapshot,
-  predictRisk,
   toRiskTone,
   probabilityToScore,
   type SnapshotState,
 } from '@/lib/ml-api'
-import type { MapMarker, HazardLayer, RiskLevel } from '@/lib/types'
+import type { MapMarker } from '@/lib/types'
 
 const LeafletMap = dynamic(
   () => import('../leaflet-map').then((mod) => mod.LeafletMap),
@@ -40,7 +38,6 @@ export function RiskMapScreen() {
   const [hazardType, setHazardType] = useState('Landslide')
   const [snapshotData, setSnapshotData] = useState<SnapshotState[]>([])
   const [liveMarkers, setLiveMarkers] = useState<MapMarker[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadSnapshot() {
@@ -61,7 +58,6 @@ export function RiskMapScreen() {
         })
         setLiveMarkers(markers)
       }
-      setLoading(false)
     }
     loadSnapshot()
   }, [])
@@ -82,15 +78,64 @@ export function RiskMapScreen() {
           <h1>Regional risk map</h1>
           <p>Explore live ML risk assessments across North-Eastern India.</p>
         </div>
-        <div className="map-filters">
-          <button className="secondary-button" type="button">
-            <FilterIcon size={16} />
-            All risk levels <ChevronDown size={14} />
-          </button>
-          <button className="secondary-button" type="button">
-            <Layers3 size={16} />
-            Hazard type <ChevronDown size={14} />
-          </button>
+        
+        {/* Interactive Header Dropdowns for Risk Level & Hazard Type */}
+        <div className="map-filters" style={{ display: 'flex', gap: 10 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <FilterIcon size={15} style={{ position: 'absolute', left: 10, color: '#64748b', pointerEvents: 'none' }} />
+            <select
+              value={riskLevel}
+              onChange={(e) => setRiskLevel(e.target.value)}
+              style={{
+                paddingLeft: 32,
+                paddingRight: 28,
+                appearance: 'none',
+                background: '#fff',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                fontSize: 13,
+                color: 'var(--ink)',
+                cursor: 'pointer',
+                height: 36,
+                fontWeight: 500,
+              }}
+            >
+              {riskLevelOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === 'All' ? 'All Risk Levels' : `${opt} Risk`}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: 10, color: '#64748b', pointerEvents: 'none' }} />
+          </div>
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Layers3 size={15} style={{ position: 'absolute', left: 10, color: '#64748b', pointerEvents: 'none' }} />
+            <select
+              value={hazardType}
+              onChange={(e) => setHazardType(e.target.value)}
+              style={{
+                paddingLeft: 32,
+                paddingRight: 28,
+                appearance: 'none',
+                background: '#fff',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                fontSize: 13,
+                color: 'var(--ink)',
+                cursor: 'pointer',
+                height: 36,
+                fontWeight: 500,
+              }}
+            >
+              {hazardTypeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: 10, color: '#64748b', pointerEvents: 'none' }} />
+          </div>
         </div>
       </div>
 
@@ -196,10 +241,20 @@ export function RiskMapScreen() {
             <div className="section-kicker">HAZARD TYPE FILTER</div>
             <div className="hazard-filter-list">
               <label>
-                <input type="checkbox" defaultChecked /> Landslide
+                <input
+                  type="checkbox"
+                  checked={hazardType === 'Landslide'}
+                  onChange={() => setHazardType('Landslide')}
+                />{' '}
+                Landslide
               </label>
               <label>
-                <input type="checkbox" /> Extreme rainfall
+                <input
+                  type="checkbox"
+                  checked={hazardType === 'Extreme Rainfall'}
+                  onChange={() => setHazardType('Extreme Rainfall')}
+                />{' '}
+                Extreme rainfall
               </label>
               <label className="future">
                 <input type="checkbox" disabled /> Debris flow <em>Future integration</em>

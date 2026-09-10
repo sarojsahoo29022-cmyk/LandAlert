@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Crosshair, Search } from 'lucide-react'
-import { fetchDistricts, type DistrictInfo } from '@/lib/ml-api'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { Crosshair, Search, MapPin } from 'lucide-react'
+import { fetchDistricts, geocodeLocation, type DistrictInfo, type GeocodeResult } from '@/lib/ml-api'
 
 export function LocationSearch({
   onAnalyze,
@@ -13,11 +13,13 @@ export function LocationSearch({
 }) {
   const [query, setQuery] = useState('')
   const [districts, setDistricts] = useState<DistrictInfo[]>([])
-  const [suggestions, setSuggestions] = useState<DistrictInfo[]>([])
+  const [suggestions, setSuggestions] = useState<(DistrictInfo & { source?: string })[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(-1)
+  const [geoLoading, setGeoLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     fetchDistricts().then((d) => {
@@ -51,6 +53,28 @@ export function LocationSearch({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const geocodeSearch = useCallback(async (q: string) => {
+    if (q.trim().length < 2) {
+      setSuggestions([])
+      setShowDropdown(false)
+      setGeoLoading(false)
+      return
+    }
+    setGeoLoading(true)
+    const result = await geocodeLocation(q.trim())
+    setGeoLoading(false)
+    if (result && result.success && result.latitude && result.longitude) {
+      setSuggestions([{
+        name: result.name || q,
+        state: result.admin1 || 'India',
+        lat: result.latitude,
+        lon: result.longitude,
+        source: 'geocode' as const,
+      }])
+      setShowDropdown(true)
+    }
+  }, [])
+
   function handleChange(value: string) {
     setQuery(value)
     setHighlightIndex(-1)
@@ -59,21 +83,34 @@ export function LocationSearch({
       setShowDropdown(false)
       return
     }
+
+    // First: match against local districts
     const lower = value.toLowerCase()
     const matched = districts.filter(
       (d) =>
         d.name.toLowerCase().includes(lower) ||
         d.state.toLowerCase().includes(lower)
     )
-    setSuggestions(matched.slice(0, 8))
-    setShowDropdown(matched.length > 0)
+
+    if (matched.length > 0) {
+      setSuggestions(matched.slice(0, 5))
+      setShowDropdown(true)
+    }
+
+    // Debounce: also try geocoding for any location worldwide
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      if (matched.length === 0) {
+        geocodeSearch(value)
+      }
+    }, 600)
   }
 
-  function selectDistrict(d: DistrictInfo) {
+  function selectSuggestion(d: DistrictInfo | { name: string; state: string; lat: number; lon: number; source: string }) {
     setQuery(d.name)
     setShowDropdown(false)
     setHighlightIndex(-1)
-    onAnalyze(d.name, d)
+    onAnalyze(d.name, d as DistrictInfo)
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -86,7 +123,7 @@ export function LocationSearch({
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (highlightIndex >= 0 && highlightIndex < suggestions.length) {
-        selectDistrict(suggestions[highlightIndex])
+        selectSuggestion(suggestions[highlightIndex])
       } else {
         const match = districts.find(
           (d) => d.name.toLowerCase() === query.toLowerCase()
@@ -111,7 +148,7 @@ export function LocationSearch({
           onFocus={() => {
             if (suggestions.length > 0) setShowDropdown(true)
           }}
-          placeholder="Search city, district or state..."
+          placeholder="Search any location (Shillong, Guwahati, Darjeeling...)"
           aria-label="Search location"
           aria-autocomplete="list"
           aria-expanded={showDropdown}
@@ -126,17 +163,24 @@ export function LocationSearch({
         >
           {suggestions.map((d, i) => (
             <div
-              key={d.name}
+              key={`${d.name}-${d.lat}`}
               role="option"
               aria-selected={i === highlightIndex}
               className={`search-dropdown-item${i === highlightIndex ? ' highlighted' : ''}`}
-              onClick={() => selectDistrict(d)}
+              onClick={() => selectSuggestion(d)}
               onMouseEnter={() => setHighlightIndex(i)}
             >
+              {d.source === 'geocode' ? <MapPin size={13} style={{ marginRight: 6, opacity: 0.6 }} /> : <MapPin size={13} style={{ marginRight: 6, opacity: 0.6 }} />}
               <span>{d.name}</span>
               <span>{d.state}</span>
             </div>
           ))}
+          {geoLoading && (
+            <div className="search-dropdown-item" style={{ opacity: 0.5 }}>
+              <span className="spinner" aria-hidden />
+              <span>Searching globally...</span>
+            </div>
+          )}
         </div>
       )}
       <button

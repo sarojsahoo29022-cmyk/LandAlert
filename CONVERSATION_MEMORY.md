@@ -5,7 +5,7 @@
 ## SIH PROBLEM: SIH26001
 ## TITLE: AI-Based Early Warning and Landslide Risk Monitoring System in NER
 
-## CURRENT DATE: September 7, 2026
+## CURRENT DATE: September 10, 2026
 
 ---
 
@@ -29,20 +29,7 @@ Smart India Hackathon (SIH26001) wants us to build an AI-Based Early Warning and
 - Be practical, explainable, and useful for disaster management decision-making
 
 ### What is Our Solution (LandAlert)?
-LandAlert is a full-stack AI-powered early warning platform that does exactly what SIH asks for. We trained a Machine Learning model (HistGradientBoosting Classifier) on 1,773 real landslide records from NASA's Global Landslide Catalog, enriched with IMD rainfall data, NASA temperature data, and SRTM terrain data (elevation + slope). The system has a Next.js frontend with 5 screens, a Python FastAPI backend with 8 API endpoints, and an interactive Leaflet/OpenStreetMap-based risk map. Users can search any NE India district, click "Analyze Risk," and instantly get a risk score, risk level, terrain details (elevation, slope, elevation zone), and contributing factors (rainfall impact, temperature impact, etc.). The system also shows a hazard chain concept explaining how heavy rainfall can lead to slope instability, then landslides, then possible river disruption and downstream flooding.
-
-### Full Functionality of LandAlert
-1. **Dashboard** - Overview of regional risk summary, AI analysis after prediction, quick actions
-2. **Risk Map** - Real Leaflet/OpenStreetMap with 9 state markers, color-coded by risk level (green/yellow/orange/red), clickable markers showing elevation, slope, risk score
-3. **Analytics** - Model performance metrics (Accuracy 76.9%, ROC-AUC 79.2%), historical landslide events table, rainfall-risk relationship
-4. **Alerts** - ML-generated alerts for High/Very High risk areas, filterable by severity, alert count badge in sidebar
-5. **Methodology** - Transparent documentation of the ML pipeline and model features
-6. **Location Search** - 54 searchable districts with autocomplete
-7. **Risk Prediction** - POST /predict endpoint returns risk score, risk level, contributing factors, terrain data
-8. **Hazard Cascade** - Visual 5-step chain: Rainfall → Instability → Landslide → River Disruption → Flooding (marked as conceptual)
-9. **Terrain Analysis** - Real elevation (8m to 4,036m) and slope (0° to 32.4°) from SRTM 90m data
-10. **Historical Data** - Past landslide events for each state from NASA catalog
-11. **Regional Overview** - Monitored locations count, elevated zones, active warnings, hotspot list with severity badges
+LandAlert is a full-stack AI-powered early warning platform that does exactly what SIH asks for. We trained a Machine Learning model (HistGradientBoosting Classifier) on 1,773 real landslide records from NASA's Global Landslide Catalog, enriched with IMD rainfall data, NASA temperature data, and SRTM terrain data (elevation + slope). The system has a Next.js frontend with 5 screens, a Python FastAPI backend with 10+ API endpoints, an interactive Leaflet/OpenStreetMap-based risk map, Recharts feature importance visualization, and Twilio SMS alert integration. Users can search any NE India district, click "Analyze Risk," and instantly get a risk score, risk level, terrain details (elevation, slope, elevation zone), and model-derived contributing factors.
 
 ---
 
@@ -51,44 +38,48 @@ LandAlert is a full-stack AI-powered early warning platform that does exactly wh
 ### 1. Frontend (Phase 1) - DONE
 - Full Next.js 16 app with TypeScript + Tailwind CSS 4
 - 5 screens: Dashboard, Risk Map, Analytics, Alerts, Methodology
-- 28+ UI components
+- 30+ UI components
 - Responsive design, mobile support
 
-### 2. ML Model v3 - DONE (Terrain Added)
+### 2. ML Model v3 - DONE (Terrain & Live Weather Supported)
 - **Model**: HistGradientBoosting (sklearn Pipeline)
 - **Trained on**: `datasets/ne_india_landslide_enriched.csv` (1,772 samples) + `Rainfall_Data_LL.csv` + `datasets/ne_terrain_lookup.csv`
 - **Features**: latitude, longitude, month, temp_2m, is_monsoon, rainfall_mm, elevation_m, slope_deg, state
 - **Accuracy**: 76.9%, Precision: 54.9%, Recall: 43.8%, F1: 48.8%, ROC-AUC: 79.2%
-- **Terrain data source**: Open-Elevation API (SRTM 90m resolution)
-- **Model saved**: `ml_model/rf_landslide_model.pkl` (Pipeline dict with "pipeline" key)
+- **Terrain data source**: SRTM 90m resolution + Open-Meteo DEM
+- **Model saved**: `ml_model/rf_landslide_model.pkl`
 - **Metadata**: `ml_model/model_meta.json`
-- **Backup**: `ml/model_ne_terrain.joblib`
 
-### 3. FastAPI Backend v3 - DONE (Terrain Support)
+### 3. FastAPI Backend v4 - DONE
 - **File**: `ml_api.py` (root directory)
 - **Run command**: `ml\.venv\Scripts\python.exe -m uvicorn ml_api:app --host 127.0.0.1 --port 8000`
-- **8 endpoints** - all updated with terrain support:
-  - GET /health - Model metrics + features list (9 features)
-  - POST /predict - Risk prediction with rainfall + terrain data
-  - GET /snapshot - All 9 NER states with rainfall + temp + elevation + slope
-  - GET /alerts - ML-generated alerts with terrain info
-  - GET /risk-summary - Low/moderate/high counts
-  - GET /history/{state} - Historical landslide records with terrain
-  - GET /districts - 54 searchable locations
-  - GET /states - All state names
+- **Endpoints**:
+  - GET `/health` - Model metrics + features list
+  - POST `/predict` - Standard risk prediction
+  - POST `/predict-live` - Live prediction with Open-Meteo weather & terrain
+  - GET `/feature-importance` - Permutation feature importances
+  - POST `/predict-explain` - Per-prediction feature contribution analysis (SHAP-like)
+  - GET `/snapshot` - All 9 NER states with current environmental risk
+  - GET `/alerts` - ML-generated alerts
+  - GET `/risk-summary` - Risk level counts
+  - GET `/history/{state}` - Historical landslide records
+  - GET `/districts` - 54 searchable locations
+  - POST `/send-sms` - Send Twilio SMS alert for High/Very High risk monitoring (manual trigger)
+  - GET `/sms-status` - Check Twilio integration status
 
-### 4. Frontend Integration - DONE
-- `lib/ml-api.ts` - Updated with terrain types (TerrainData, PredictResult with terrain)
-- Dashboard - Loads snapshot on mount, real predictions with terrain on search
-- Analytics - Live model metrics from API
-- Alerts - ML-generated alerts from /alerts endpoint
-- LocationSearch - Passes search term to ML prediction
-- Risk Factors - Dynamically computed from API factors (Rainfall, Temperature, Elevation, Slope)
-- Location Details - Shows real elevation/slope from API (no more hardcoded "42" and "1,240 m")
+### 4. Explainability & Feature Importance (Phase 7) - DONE
+- Added `/feature-importance` and `/predict-explain` API endpoints
+- Built `FeatureImportanceChart` component with Recharts horizontal bar chart
+- Integrated into Dashboard "EXPLAINABLE AI" panel showing feature impact weights (Rainfall 8.34%, Temp 5.18%, Longitude 2.37%, Month 2.11%, etc.)
 
-### 5. Build Status
-- `npm run build` - SUCCESS
-- No TypeScript errors
+### 5. Twilio SMS Early Warning Alert System (Phase 8) - DONE
+- Integrated Twilio REST API with active credentials
+- Manual SMS notification trigger via POST `/send-sms`
+- Target recipients for monitoring: `+918926071764` and `+919078461972`
+
+### 6. Verification & Build Status - DONE
+- `npx next build --webpack` - SUCCESS (0 errors)
+- Python endpoint verification script `ml/test_all_endpoints.py` - PASSED (100% endpoints healthy)
 
 ---
 

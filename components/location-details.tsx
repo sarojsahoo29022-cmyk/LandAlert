@@ -57,6 +57,13 @@ export function LocationDetails({
               <b>{location.elevation}</b>
               <small>Elevation</small>
             </span>
+            {location.temperature && (
+              <span>
+                <AlertTriangle size={15} />
+                <b>{location.temperature}</b>
+                <small>Temp</small>
+              </span>
+            )}
           </div>
         </div>
       </div>

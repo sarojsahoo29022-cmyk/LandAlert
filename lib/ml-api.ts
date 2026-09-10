@@ -1,4 +1,4 @@
-// Client-side bridge to the GeoShield FastAPI ML service (ml_api.py).
+// Client-side bridge to the LandAlert FastAPI ML service (ml_api.py).
 // All calls fail soft: if the service is not running, callers fall back to mock UI data.
 
 export const ML_API_URL =
@@ -32,6 +32,60 @@ export interface PredictResult {
   factors: Record<string, string>
   explanation: string
   terrain?: TerrainData
+}
+
+export interface GeocodeResult {
+  success: boolean
+  latitude?: number
+  longitude?: number
+  name?: string
+  admin1?: string
+  country?: string
+  elevation?: number | null
+  timezone?: string
+  error?: string
+}
+
+export interface LiveDataWeather {
+  temperature_c: number | null
+  humidity_pct: number | null
+  wind_speed_kmh: number | null
+  pressure_hpa: number | null
+  precipitation_mm: number | null
+}
+
+export interface LiveDataRainfall {
+  recent_days_mm: number
+  daily_breakdown: number[]
+}
+
+export interface PredictLiveResult {
+  success: boolean
+  location: string
+  state: string
+  latitude: number
+  longitude: number
+  landslide_probability: number
+  risk_level: string
+  prediction: number
+  factors: Record<string, string>
+  explanation: string
+  terrain: TerrainData
+  live_data: {
+    weather: LiveDataWeather
+    rainfall_forecast: LiveDataRainfall
+    terrain: TerrainData
+  }
+  data_status: {
+    weather: string
+    rainfall: string
+    terrain: string
+    overall: string
+  }
+  timestamp: string
+  month: number
+  year: number
+  error?: string
 }
 
 export interface ModelMetrics {
@@ -70,7 +124,7 @@ export interface AlertItem {
 async function getJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
+    const timeout = setTimeout(() => controller.abort(), 15000)
     const res = await fetch(`${ML_API_URL}${path}`, {
       ...init,
       signal: controller.signal,
@@ -111,6 +165,23 @@ export async function predictRisk(
   return getJson<PredictResult>('/predict', {
     method: 'POST',
     body: JSON.stringify(features),
+  })
+}
+
+export async function geocodeLocation(
+  query: string,
+): Promise<GeocodeResult | null> {
+  return getJson<GeocodeResult>(`/geocode?q=${encodeURIComponent(query)}`)
+}
+
+export async function predictLive(
+  location: string,
+  latitude?: number,
+  longitude?: number,
+): Promise<PredictLiveResult | null> {
+  return getJson<PredictLiveResult>('/predict-live', {
+    method: 'POST',
+    body: JSON.stringify({ location, latitude, longitude }),
   })
 }
 
@@ -255,6 +326,54 @@ export async function fetchRainfallSeries(stateName: string = 'Meghalaya'): Prom
   return points
 }
 
+export interface FeatureImportance {
+  feature: string
+  importance: number
+  abs_importance: number
+  direction: string
+  rank: number
+  weight_pct: number
+}
+
+export async function fetchFeatureImportance(): Promise<{ features: FeatureImportance[]; model_version: string } | null> {
+  return getJson<{ features: FeatureImportance[]; model_version: string }>('/feature-importance')
+}
+
+export interface PredictionContribution {
+  feature: string
+  value: number
+  training_mean: number
+  deviation_zscore: number
+  importance: number
+  contribution: number
+  direction: string
+  impact_level: string
+}
+
+export async function fetchPredictExplain(
+  state: string,
+  month: number,
+  year: number,
+  latitude?: number,
+  longitude?: number,
+  temp_2m?: number,
+  rainfall_mm?: number,
+  elevation_m?: number,
+  slope_deg?: number,
+): Promise<{
+  risk_level: string
+  probability: number
+  contributions: PredictionContribution[]
+  explanation: string
+  top_risk_drivers: string[]
+  top_risk_reducers: string[]
+} | null> {
+  return getJson('/predict-explain', {
+    method: 'POST',
+    body: JSON.stringify({ state, month, year, latitude, longitude, temp_2m, rainfall_mm, elevation_m, slope_deg }),
+  })
+}
+
 export interface RiskRainfallDataPoint {
   label: string
   rainfall: number
@@ -280,4 +399,78 @@ export async function fetchRiskRainfallCorrelation(
       risk: Math.round(riskEstimate),
     }
   })
+}
+
+// ============================================================
+// SUPABASE DATABASE FUNCTIONS
+// ============================================================
+
+export interface DbPredictionHistory {
+  id: number
+  location_name: string
+  state: string
+  latitude: number
+  longitude: number
+  risk_level: string
+  probability: number
+  rainfall_mm: number
+  temperature_c: number
+  elevation_m: number
+  slope_deg: number
+  data_status: string
+  month: number
+  year: number
+  created_at: string
+}
+
+export interface DbAlert {
+  id: number
+  location_name: string
+  state: string
+  alert_type: string
+  severity: string
+  message: string
+  risk_level: string
+  probability: number
+  acknowledged: boolean
+  acknowledged_at: string | null
+  created_at: string
+}
+
+export interface DbStats {
+  configured: boolean
+  predictions?: number
+  alerts?: number
+  unacknowledged_alerts?: number
+  high_risk_predictions?: number
+  error?: string
+}
+
+export async function fetchDbStatus(): Promise<{ configured: boolean; connected?: boolean; error?: string } | null> {
+  return getJson<{ configured: boolean; connected?: boolean; error?: string }>('/db/status')
+}
+
+export async function fetchDbHistory(state?: string, limit: number = 100): Promise<DbPredictionHistory[] | null> {
+  const params = new URLSearchParams()
+  if (state) params.set('state', state)
+  params.set('limit', String(limit))
+  const data = await getJson<{ history: DbPredictionHistory[] }>(`/db/history?${params.toString()}`)
+  return data?.history ?? null
+}
+
+export async function fetchDbAlerts(acknowledged?: boolean, severity?: string): Promise<DbAlert[] | null> {
+  const params = new URLSearchParams()
+  if (acknowledged !== undefined) params.set('acknowledged', String(acknowledged))
+  if (severity) params.set('severity', severity)
+  const data = await getJson<{ alerts: DbAlert[] }>(`/db/alerts?${params.toString()}`)
+  return data?.alerts ?? null
+}
+
+export async function acknowledgeDbAlert(alertId: number): Promise<boolean> {
+  const result = await getJson<{ success: boolean }>(`/db/alerts/${alertId}/acknowledge`, { method: 'POST' })
+  return result?.success ?? false
+}
+
+export async function fetchDbStats(): Promise<DbStats | null> {
+  return getJson<DbStats>('/db/stats')
 }
