@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   ComposedChart,
   Line,
@@ -11,7 +12,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import { riskRainfallSeries } from '@/lib/mock-data'
+import { riskRainfallSeries as fallback } from '@/lib/mock-data'
+import { fetchRiskRainfallCorrelation, type RiskRainfallDataPoint } from '@/lib/ml-api'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -35,11 +37,32 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-export function RiskRainfallChart({ height = 180 }: { height?: number }) {
+export function RiskRainfallChart({ height = 180, stateName }: { height?: number; stateName?: string }) {
+  const [data, setData] = useState<RiskRainfallDataPoint[]>(fallback)
+  const [source, setSource] = useState<'live' | 'fallback'>('fallback')
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const live = await fetchRiskRainfallCorrelation(stateName || 'Meghalaya')
+      if (!cancelled && live.length > 0) {
+        setData(live)
+        setSource('live')
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [stateName])
+
   return (
     <div className="risk-rainfall" style={{ width: '100%' }}>
+      {source === 'live' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <span className="demo-tag" style={{ color: '#27966a', borderColor: '#27966a' }}>LIVE DATA</span>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={height}>
-        <ComposedChart data={riskRainfallSeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="label"

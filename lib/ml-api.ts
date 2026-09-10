@@ -200,3 +200,84 @@ export function toRiskTone(level: string): 'low' | 'moderate' | 'high' | 'very-h
 export function probabilityToScore(prob: number): number {
   return Math.round(prob * 100)
 }
+
+export interface RiskTrendPoint {
+  label: string
+  value: number
+}
+
+export async function fetchRiskTrend(stateName: string = 'Meghalaya'): Promise<RiskTrendPoint[]> {
+  const history = await fetchHistory(stateName)
+  if (!history || !history.events || history.events.length === 0) return []
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  const points: RiskTrendPoint[] = history.events.map((e) => {
+    const riskEstimate = e.is_monsoon
+      ? Math.min(95, 40 + (e.rainfall_mm || 0) * 0.3 + (e.temp_2m || 0) * 0.5)
+      : Math.max(10, 25 + (e.rainfall_mm || 0) * 0.15)
+
+    return {
+      label: `${monthNames[e.month - 1]} ${String(e.year).slice(2)}`,
+      value: Math.round(riskEstimate),
+    }
+  })
+
+  return points
+}
+
+export interface RainfallDataPoint {
+  label: string
+  value: number
+}
+
+export async function fetchRainfallSeries(stateName: string = 'Meghalaya'): Promise<RainfallDataPoint[]> {
+  const history = await fetchHistory(stateName)
+  if (!history || !history.events || history.events.length === 0) return []
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  const byMonth: Record<number, number[]> = {}
+  history.events.forEach((e) => {
+    if (!byMonth[e.month]) byMonth[e.month] = []
+    byMonth[e.month].push(e.rainfall_mm || 0)
+  })
+
+  const points: RainfallDataPoint[] = []
+  for (let m = 1; m <= 12; m++) {
+    const vals = byMonth[m]
+    if (vals && vals.length > 0) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+      points.push({ label: monthNames[m - 1], value: Math.round(avg) })
+    }
+  }
+
+  return points
+}
+
+export interface RiskRainfallDataPoint {
+  label: string
+  rainfall: number
+  risk: number
+}
+
+export async function fetchRiskRainfallCorrelation(
+  stateName: string = 'Meghalaya',
+): Promise<RiskRainfallDataPoint[]> {
+  const history = await fetchHistory(stateName)
+  if (!history || !history.events || history.events.length === 0) return []
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  return history.events.map((e) => {
+    const riskEstimate = e.is_monsoon
+      ? Math.min(95, 40 + (e.rainfall_mm || 0) * 0.3 + (e.temp_2m || 0) * 0.5)
+      : Math.max(10, 25 + (e.rainfall_mm || 0) * 0.15)
+
+    return {
+      label: `${monthNames[e.month - 1]} ${String(e.year).slice(2)}`,
+      rainfall: Math.round(e.rainfall_mm || 0),
+      risk: Math.round(riskEstimate),
+    }
+  })
+}

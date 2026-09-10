@@ -11,9 +11,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import {
-  rainfallSeries,
-} from '@/lib/mock-data'
 import { ChartCard } from '../chart-card'
 import { RiskTrendChart } from '../risk-trend-chart'
 import { RiskRainfallChart } from '../risk-rainfall-chart'
@@ -21,7 +18,7 @@ import { DataTable } from '../data-table'
 import { StatusBadge } from '../status-badge'
 import { HazardCascadeTimeline } from '../hazard-cascade-timeline'
 import { RiskPredictor } from '../risk-predictor'
-import { fetchModelMetrics, fetchHistory, type ModelMetrics } from '@/lib/ml-api'
+import { fetchModelMetrics, fetchHistory, fetchRainfallSeries, type ModelMetrics, type RainfallDataPoint } from '@/lib/ml-api'
 import type { HistoricalEvent } from '@/lib/types'
 
 const STATES = [
@@ -34,6 +31,8 @@ export function AnalyticsScreen() {
   const [selectedState, setSelectedState] = useState('Meghalaya')
   const [historicalEvents, setHistoricalEvents] = useState<HistoricalEvent[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [rainfallData, setRainfallData] = useState<RainfallDataPoint[]>([])
+  const [rainfallTotal, setRainfallTotal] = useState(0)
 
   useEffect(() => {
     fetchModelMetrics().then(setLiveMetrics)
@@ -41,7 +40,10 @@ export function AnalyticsScreen() {
 
   const loadHistory = useCallback(async (state: string) => {
     setLoadingHistory(true)
-    const data = await fetchHistory(state)
+    const [data, rainfall] = await Promise.all([
+      fetchHistory(state),
+      fetchRainfallSeries(state),
+    ])
     if (data && data.events) {
       const events: HistoricalEvent[] = data.events.slice(0, 10).map((e) => ({
         date: `${e.year}-${String(e.month).padStart(2, '0')}`,
@@ -53,6 +55,10 @@ export function AnalyticsScreen() {
       setHistoricalEvents(events)
     } else {
       setHistoricalEvents([])
+    }
+    if (rainfall && rainfall.length > 0) {
+      setRainfallData(rainfall)
+      setRainfallTotal(rainfall.reduce((sum, p) => sum + p.value, 0))
     }
     setLoadingHistory(false)
   }, [])
@@ -123,7 +129,7 @@ export function AnalyticsScreen() {
             </div>
           }
         >
-          <RiskTrendChart />
+          <RiskTrendChart stateName={selectedState} />
         </ChartCard>
 
         <ChartCard
@@ -131,12 +137,12 @@ export function AnalyticsScreen() {
           title="Rainfall analysis"
           legend={
             <span className="select-chip">
-              Last 72 hours <ChevronDown size={14} />
+              Monthly avg by state <ChevronDown size={14} />
             </span>
           }
         >
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={rainfallSeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <BarChart data={rainfallData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="label"
@@ -159,7 +165,7 @@ export function AnalyticsScreen() {
               />
               <Bar
                 dataKey="value"
-                name="Rainfall"
+                name="Rainfall (mm)"
                 fill="#3b82f6"
                 fillOpacity={0.7}
                 radius={[4, 4, 0, 0]}
@@ -169,9 +175,11 @@ export function AnalyticsScreen() {
           <div className="chart-callout">
             <CloudRain size={15} />
             <span>
-              <b>156 mm</b> accumulated rainfall
+              <b>{rainfallTotal > 0 ? `${rainfallTotal} mm` : '--'}</b> total avg rainfall across months
             </span>
-            <StatusBadge tone="high">Above average</StatusBadge>
+            <StatusBadge tone={rainfallTotal > 600 ? 'high' : 'moderate'}>
+              {rainfallTotal > 600 ? 'Above average' : 'Seasonal'}
+            </StatusBadge>
           </div>
         </ChartCard>
 
@@ -180,7 +188,7 @@ export function AnalyticsScreen() {
           title="Risk vs rainfall"
           legend={<span className="demo-tag">LIVE DATA</span>}
         >
-          <RiskRainfallChart />
+          <RiskRainfallChart stateName={selectedState} />
           <div className="chart-legend rr-legend">
             <span>
               <i className="line-dot rain" />

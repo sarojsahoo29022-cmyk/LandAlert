@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   AreaChart,
   Area,
@@ -10,7 +11,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import { riskTrend } from '@/lib/mock-data'
+import { riskTrend as fallback } from '@/lib/mock-data'
+import { fetchRiskTrend, type RiskTrendPoint } from '@/lib/ml-api'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -30,13 +32,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-export function RiskTrendChart({ height = 160 }: { height?: number }) {
-  const forecastIndex = 3
+export function RiskTrendChart({ height = 160, stateName }: { height?: number; stateName?: string }) {
+  const [data, setData] = useState<RiskTrendPoint[]>(fallback)
+  const [source, setSource] = useState<'live' | 'fallback'>('fallback')
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const live = await fetchRiskTrend(stateName || 'Meghalaya')
+      if (!cancelled && live.length > 0) {
+        setData(live)
+        setSource('live')
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [stateName])
+
+  const forecastIndex = Math.max(0, Math.floor(data.length / 2))
 
   return (
     <div className="chart" style={{ width: '100%' }}>
+      {source === 'live' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <span className="demo-tag" style={{ color: '#27966a', borderColor: '#27966a' }}>LIVE DATA</span>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={riskTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#df762d" stopOpacity={0.3} />
@@ -58,10 +81,10 @@ export function RiskTrendChart({ height = 160 }: { height?: number }) {
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine
-            x={riskTrend[forecastIndex]?.label}
+            x={data[forecastIndex]?.label}
             stroke="var(--muted-foreground)"
             strokeDasharray="3 3"
-            label={{ value: 'Today', position: 'insideTopRight', fontSize: 10, fill: 'var(--muted-foreground)' }}
+            label={{ value: 'Now', position: 'insideTopRight', fontSize: 10, fill: 'var(--muted-foreground)' }}
           />
           <Area
             type="monotone"

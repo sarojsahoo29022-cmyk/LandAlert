@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { sendAlertSms, fetchSmsStatus } from '@/lib/ml-api'
 import { Button } from '@/components/ui/button'
-import { Smartphone, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 interface SubscribeFormProps {
   onSent?: () => void
@@ -63,7 +63,7 @@ export function SubscribeForm({ onSent }: SubscribeFormProps) {
   return (
     <div className="bg-card rounded-lg border p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Smartphone className="h-4 w-4 text-primary" />
+        <span style={{ fontSize: 16 }}>&#x1F4F1;</span>
         <h3 className="text-sm font-medium">SMS Alert Subscription</h3>
       </div>
       
@@ -105,7 +105,7 @@ export function SubscribeForm({ onSent }: SubscribeFormProps) {
             </>
           ) : (
             <>
-              <Send className="h-4 w-4 mr-2" />
+              <span style={{ marginRight: 6 }}>&#x2709;</span>
               Send Alert SMS
             </>
           )}
@@ -119,7 +119,7 @@ export function SubscribeForm({ onSent }: SubscribeFormProps) {
             : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
         }`}>
           {result.success ? (
-            <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
           ) : (
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           )}
