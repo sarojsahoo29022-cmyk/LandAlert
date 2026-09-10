@@ -1106,7 +1106,7 @@ async def history(state_name: str):
             "latitude": float(row["latitude"]),
             "longitude": float(row["longitude"]),
             "elevation_m": round(terrain.get("elevation_m", 0), 0),
-            "slope_deg": round(terrain.get("slope_deg", 0), 1),
+            "slope_deg": round(0 if math.isnan(float(terrain.get("slope_deg", 0))) else float(terrain.get("slope_deg", 0)), 1),
         })
 
     total = len(subset)
