@@ -1,6 +1,6 @@
 <div align="center">
 
-# LandAlert
+# GeoShield
 
 ### AI-Based Early Warning and Landslide Risk Monitoring System for NE India
 
@@ -18,7 +18,7 @@
 
 ## Overview
 
-LandAlert is a full-stack early warning platform that combines **machine learning**, **interactive maps**, and **cascading hazard analysis** to monitor and predict landslide risks across North-Eastern India. It ingests environmental data (rainfall, terrain, elevation, slope, temperature), runs it through a trained **HistGradientBoosting classifier**, and presents risk insights through a polished dashboard with real-time alerts and SMS notifications.
+GeoShield is a full-stack early warning platform that combines **machine learning**, **interactive maps**, and **cascading hazard analysis** to monitor and predict landslide risks across North-Eastern India. It ingests environmental data (rainfall, terrain, elevation, slope, temperature), runs it through a trained **HistGradientBoosting classifier**, and presents risk insights through a polished dashboard with real-time alerts and SMS notifications.
 
 ---
 
@@ -51,7 +51,7 @@ LandAlert is a full-stack early warning platform that combines **machine learnin
 ## Project Structure
 
 ```
-LandAlert/
+GeoShield/
 ├── app/                        # Next.js app router
 │   ├── layout.tsx              # Root layout
 │   └── page.tsx                # Main page
@@ -92,8 +92,8 @@ LandAlert/
 ### Step 1: Clone & Install
 
 ```bash
-git clone https://github.com/sarojsahoo29022-cmyk/LandAlert.git
-cd LandAlert
+git clone https://github.com/sarojsahoo29022-cmyk/GeoShield.git
+cd GeoShield
 npm install
 pip install -r requirements.txt
 ```
